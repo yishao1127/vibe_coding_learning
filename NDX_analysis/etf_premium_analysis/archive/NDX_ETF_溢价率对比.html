@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>纳指100 ETF 溢价率对比</title>
+<style>
+:root { color-scheme:light; --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10); --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; }
+:root[data-theme="dark"] { color-scheme:dark; --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10); --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { width:min(1200px,calc(100% - 32px)); margin:32px auto; }
+.header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:20px; }
+h1 { margin:0 0 7px; font-size:clamp(24px,4vw,38px); letter-spacing:-.035em; line-height:1.12; }
+.sub { color:var(--ink2); font-size:14px; line-height:1.6; }
+.actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+button { border:1px solid var(--border); background:var(--surface); color:var(--ink2); border-radius:9px; padding:8px 12px; cursor:pointer; font:inherit; font-size:13px; }
+button:hover,button:focus-visible { border-color:var(--muted); outline:none; }
+button.active { color:var(--ink); font-weight:650; box-shadow:inset 0 0 0 1px var(--ink); }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:0 10px 35px rgba(0,0,0,.04); overflow:hidden; }
+.topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 20px 10px; flex-wrap:wrap; }
+.legend { display:flex; gap:18px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:8px; color:var(--ink2); font-size:13px; }
+.legend-line { width:24px; height:3px; border-radius:3px; background:var(--c); }
+.legend-line.dash { background:repeating-linear-gradient(90deg,var(--c) 0 8px,transparent 8px 12px); }
+.legend-line.dot { background:repeating-linear-gradient(90deg,var(--c) 0 3px,transparent 3px 7px); }
+.legend-line.mix { background:repeating-linear-gradient(90deg,var(--c) 0 10px,transparent 10px 14px,var(--c) 14px 17px,transparent 17px 21px); }
+.range { display:flex; gap:6px; }
+.range button { padding:6px 10px; }
+.chart-wrap { position:relative; min-height:510px; padding:0 8px 8px; }
+svg { width:100%; height:500px; display:block; overflow:visible; touch-action:none; }
+.grid { stroke:var(--grid); stroke-width:1; }
+.axis { stroke:var(--axis); stroke-width:1; }
+.tick { fill:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.line { fill:none; stroke-width:2.25; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.end-dot { stroke:var(--surface); stroke-width:2; vector-effect:non-scaling-stroke; }
+.direct { fill:var(--ink2); font-size:12px; font-weight:650; paint-order:stroke; stroke:var(--surface); stroke-width:4px; stroke-linejoin:round; }
+.crosshair { stroke:var(--muted); stroke-width:1; stroke-dasharray:3 3; pointer-events:none; }
+.hover-dot { stroke:var(--surface); stroke-width:2; pointer-events:none; }
+.tooltip { position:absolute; display:none; min-width:190px; pointer-events:none; z-index:5; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.14); font-size:12px; }
+.tooltip-date { font-weight:700; margin-bottom:7px; }
+.tip-row { display:flex; justify-content:space-between; gap:20px; margin:4px 0; color:var(--ink2); }
+.tip-name { display:flex; align-items:center; gap:7px; }
+.swatch { width:8px; height:8px; border-radius:50%; background:var(--c); }
+.tip-value { color:var(--ink); font-weight:650; font-variant-numeric:tabular-nums; }
+.table-section { display:none; padding:8px 20px 22px; overflow:auto; max-height:580px; }
+.table-section.show { display:block; }
+table { border-collapse:collapse; width:100%; min-width:620px; font-size:13px; }
+th,td { padding:9px 12px; border-bottom:1px solid var(--grid); text-align:right; font-variant-numeric:tabular-nums; }
+th:first-child,td:first-child { text-align:left; position:sticky; left:0; background:var(--surface); }
+th { color:var(--ink2); position:sticky; top:0; background:var(--surface); z-index:2; }
+.note { color:var(--muted); font-size:12px; padding:11px 20px 16px; border-top:1px solid var(--grid); }
+@media(max-width:720px) { main { width:min(100% - 16px,1200px); margin:18px auto; } .header { display:block; } .actions { justify-content:flex-start; margin-top:14px; } .chart-wrap { min-height:430px; } svg { height:420px; } .direct { display:none; } }
+@media print { body { background:white; } main { width:100%; margin:0; } .actions,.range,.tooltip { display:none!important; } .card { box-shadow:none; } }
+
+.section-header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin:42px 0 18px; }
+.section-header h2 { margin:0 0 7px; font-size:clamp(22px,3vw,30px); letter-spacing:-.025em; }
+@media(max-width:720px) { .section-header { display:block; margin-top:32px; } }
+
+.correlation-layout { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(300px,.8fr); gap:16px; padding:0 16px 16px; }
+.correlation-panel { position:relative; border:1px solid var(--border); border-radius:12px; padding:12px; min-width:0; }
+.correlation-panel h3 { margin:0 0 2px; font-size:14px; color:var(--ink2); font-weight:650; }
+.correlation-panel .panel-sub { color:var(--muted); font-size:12px; margin-bottom:4px; }
+.correlation-time svg { height:440px; }
+.correlation-scatter svg { height:360px; }
+.correlation-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.stat-box { border:1px solid var(--border); border-radius:10px; padding:11px 12px; }
+.stat-label { color:var(--muted); font-size:11px; }
+.stat-value { color:var(--ink); font-size:24px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.stat-note { color:var(--ink2); font-size:11px; margin-top:2px; }
+.panel-divider { stroke:var(--axis); stroke-width:1; stroke-dasharray:3 4; }
+.scatter-dot { stroke:var(--surface); stroke-width:1.5; opacity:.85; }
+.regression { fill:none; stroke:var(--s2); stroke-width:2; stroke-dasharray:7 4; }
+@media(max-width:850px) { .correlation-layout { grid-template-columns:1fr; } .correlation-scatter svg { height:390px; } }
+@media(max-width:520px) { .correlation-stats { grid-template-columns:1fr; } }
+
+.guotai-side { display:grid; grid-template-rows:auto auto; gap:12px; }
+.mini-scatter { position:relative; }
+.mini-scatter svg { height:250px; }
+.guotai-insight { margin:0 16px 16px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; color:var(--ink2); font-size:13px; line-height:1.6; }
+.guotai-insight strong { color:var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <div class="header">
+    <div><h1>纳指100 ETF 溢价率对比</h1><div class="sub">华安、富国、招商、国泰、华泰、博时 · 2026-06-09 至 2026-08-19 · 单位：%</div></div>
+    <div class="actions"><button id="tableBtn">查看数据表</button><button id="themeBtn" aria-label="切换明暗主题">深色模式</button></div>
+  </div>
+  <section class="card">
+    <div class="topbar"><div class="legend" id="legend"></div><div class="range"><button data-days="30">近30日</button><button data-days="60">近60日</button><button data-days="all" class="active">全部</button></div></div>
+    <div class="chart-wrap" id="chartWrap"><svg id="chart" role="img" aria-label="六只纳指100 ETF 溢价率随时间变化的折线图"></svg><div class="tooltip" id="tooltip"></div></div>
+    <div class="table-section" id="tableSection"><table id="dataTable"></table></div>
+    <div class="note">数据来源：NDX 溢价分析.xlsx。溢价率按原始工作表数据展示；悬停或触摸图表可查看各交易日明细。</div>
+  </section>
+
+<!-- SECOND_CHART_START -->
+<div class="section-header">
+  <div><h2>T-1 日溢价率对比</h2><div class="sub">国泰、博时、华安、华泰 · 2026-05-20 至 2026-08-18 · 单位：%</div></div>
+  <div class="actions"><button id="tableBtn2">查看数据表</button></div>
+</div>
+<section class="card" id="secondChartCard">
+  <div class="topbar"><div class="legend" id="legend2"></div><div class="range"><button data-days-2="30">近30日</button><button data-days-2="60">近60日</button><button data-days-2="all" class="active">全部</button></div></div>
+  <div class="chart-wrap" id="chartWrap2"><svg id="chart2" role="img" aria-label="国泰、博时、华安、华泰四只纳指100 ETF 的 T-1 日溢价率折线图"></svg><div class="tooltip" id="tooltip2"></div></div>
+  <div class="table-section" id="tableSection2"><table id="dataTable2"></table></div>
+  <div class="note">数据来源：NDX 溢价分析2.xlsx。按实际列名“日期”和“T-1日溢价率”读取；悬停或触摸图表可查看各交易日明细。</div>
+</section>
+<!-- SECOND_CHART_END -->
+
+<!-- TURNOVER_CHART_START -->
+<div class="section-header">
+  <div><h2>成交额对比</h2><div class="sub">华安、富国、招商、国泰、华泰、博时 · 2026-06-09 至 2026-08-19 · 单位：万元</div></div>
+  <div class="actions"><button id="tableBtn3">查看数据表</button></div>
+</div>
+<section class="card" id="turnoverChartCard">
+  <div class="topbar"><div class="legend" id="legend3"></div><div class="range"><button data-days-3="30">近30日</button><button data-days-3="60">近60日</button><button data-days-3="all" class="active">全部</button></div></div>
+  <div class="chart-wrap" id="chartWrap3"><svg id="chart3" role="img" aria-label="六只纳指100 ETF 成交额随时间变化的折线图"></svg><div class="tooltip" id="tooltip3"></div></div>
+  <div class="table-section" id="tableSection3"><table id="dataTable3"></table></div>
+  <div class="note">数据来源：NDX 溢价分析.xlsx。按实际列名“价格日期”和“成交额”读取，原始单位为万元；悬停或触摸图表可查看各交易日明细。</div>
+</section>
+<!-- TURNOVER_CHART_END -->
+
+<!-- HUAAN_CORRELATION_START -->
+<div class="section-header">
+  <div><h2>华安：净值与溢价率相关性</h2><div class="sub">2026-06-09 至 2026-08-19 · 共享时间轴对齐折线 + 散点回归</div></div>
+  <div class="actions"><button id="tableBtn4">查看数据表</button></div>
+</div>
+<section class="card" id="huaanCorrelationCard">
+  <div class="topbar">
+    <div class="legend"><div class="legend-item"><span class="legend-line" style="--c:var(--s1)"></span>净值</div><div class="legend-item"><span class="legend-line dash" style="--c:var(--s2)"></span>溢价率</div></div>
+    <div class="range"><button data-days-4="30">近30日</button><button data-days-4="60">近60日</button><button data-days-4="all" class="active">全部</button></div>
+  </div>
+  <div class="correlation-layout">
+    <div class="correlation-panel correlation-time">
+      <h3>时间走势</h3><div class="panel-sub">上下独立刻度，共享日期位置，避免双轴缩放造成视觉误导</div>
+      <div class="chart-wrap" id="chartWrap4"><svg id="chart4" role="img" aria-label="华安净值与溢价率上下对齐时间序列图"></svg><div class="tooltip" id="tooltip4"></div></div>
+    </div>
+    <div class="correlation-panel correlation-scatter">
+      <h3>净值—溢价率散点</h3><div class="panel-sub">虚线为线性回归趋势</div>
+      <div class="chart-wrap" id="scatterWrap4"><svg id="scatter4" role="img" aria-label="华安净值与溢价率散点图"></svg><div class="tooltip" id="scatterTip4"></div></div>
+      <div class="correlation-stats">
+        <div class="stat-box"><div class="stat-label">水平值 Pearson r</div><div class="stat-value" id="levelCorr4">—</div><div class="stat-note" id="levelNote4"></div></div>
+        <div class="stat-box"><div class="stat-label">日变化 Pearson r</div><div class="stat-value" id="changeCorr4">—</div><div class="stat-note" id="changeNote4"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="table-section" id="tableSection4"><table id="dataTable4"></table></div>
+  <div class="note">数据来源：NDX 溢价分析.xlsx 的“华安”工作表，按“价格日期”“净值”“溢价率”读取。相关系数仅描述样本期内线性相关，不代表因果关系。为避免双轴任意缩放产生误导，采用共享时间轴的上下对齐图。</div>
+</section>
+<!-- HUAAN_CORRELATION_END -->
+
+<!-- GUOTAI_CORRELATION_START -->
+<div class="section-header">
+  <div><h2>国泰：净值与溢价率相关性</h2><div class="sub">2026-06-09 至 2026-08-19 · 时间走势 + 水平值与日变化散点</div></div>
+  <div class="actions"><button id="tableBtn5">查看数据表</button></div>
+</div>
+<section class="card" id="guotaiCorrelationCard">
+  <div class="topbar">
+    <div class="legend"><div class="legend-item"><span class="legend-line" style="--c:var(--s1)"></span>净值</div><div class="legend-item"><span class="legend-line dash" style="--c:var(--s2)"></span>溢价率</div></div>
+    <div class="range"><button data-days-5="30">近30日</button><button data-days-5="60">近60日</button><button data-days-5="all" class="active">全部</button></div>
+  </div>
+  <div class="correlation-layout">
+    <div class="correlation-panel correlation-time">
+      <h3>时间走势</h3><div class="panel-sub">上下独立刻度，共享日期位置</div>
+      <div class="chart-wrap" id="chartWrap5"><svg id="chart5" role="img" aria-label="国泰净值与溢价率上下对齐时间序列图"></svg><div class="tooltip" id="tooltip5"></div></div>
+    </div>
+    <div class="guotai-side">
+      <div class="correlation-panel mini-scatter"><h3>水平值相关</h3><div class="panel-sub">净值 vs 溢价率</div><div class="chart-wrap" id="scatterWrap5a"><svg id="scatter5a"></svg><div class="tooltip" id="scatterTip5a"></div></div></div>
+      <div class="correlation-panel mini-scatter"><h3>日变化相关</h3><div class="panel-sub">净值涨跌幅 vs 溢价率百分点变化</div><div class="chart-wrap" id="scatterWrap5b"><svg id="scatter5b"></svg><div class="tooltip" id="scatterTip5b"></div></div></div>
+    </div>
+  </div>
+  <div class="correlation-stats" style="margin:0 16px 12px">
+    <div class="stat-box"><div class="stat-label">水平值 Pearson r</div><div class="stat-value" id="levelCorr5">—</div><div class="stat-note" id="levelNote5"></div></div>
+    <div class="stat-box"><div class="stat-label">日变化 Pearson r</div><div class="stat-value" id="changeCorr5">—</div><div class="stat-note" id="changeNote5"></div></div>
+  </div>
+  <div class="guotai-insight" id="insight5"></div>
+  <div class="table-section" id="tableSection5"><table id="dataTable5"></table></div>
+  <div class="note">数据来源：NDX 溢价分析.xlsx 的“国泰”工作表。日变化定义为净值日涨跌幅与溢价率百分点变化。相关性不代表因果；溢价率本身由市场价格相对净值计算，机械关系和净值日期错位均可能影响结果。</div>
+</section>
+<!-- GUOTAI_CORRELATION_END -->
+</main>
+<script>
+const SERIES=[{"name":"华安","points":[{"date":"2026-06-09","value":6.79},{"date":"2026-06-10","value":5.1},{"date":"2026-06-11","value":6.21},{"date":"2026-06-12","value":4.52},{"date":"2026-06-15","value":8.37},{"date":"2026-06-16","value":6.75},{"date":"2026-06-17","value":8.8},{"date":"2026-06-18","value":9.31},{"date":"2026-06-23","value":3.65},{"date":"2026-06-24","value":7.86},{"date":"2026-06-25","value":9.76},{"date":"2026-06-26","value":5.97},{"date":"2026-06-29","value":7.62},{"date":"2026-06-30","value":7.07},{"date":"2026-07-01","value":5.79},{"date":"2026-07-02","value":4.75},{"date":"2026-07-03","value":6.93},{"date":"2026-07-06","value":7.17},{"date":"2026-07-07","value":5.42},{"date":"2026-07-08","value":5.63},{"date":"2026-07-09","value":6.91},{"date":"2026-07-10","value":5.36},{"date":"2026-07-13","value":4.3},{"date":"2026-07-14","value":6.59},{"date":"2026-07-15","value":7.08},{"date":"2026-07-16","value":6.06},{"date":"2026-07-17","value":4.17},{"date":"2026-07-20","value":5.76},{"date":"2026-07-21","value":7.61},{"date":"2026-07-22","value":5.37},{"date":"2026-07-23","value":5.91},{"date":"2026-07-24","value":6.48},{"date":"2026-07-27","value":8.49},{"date":"2026-07-28","value":5.87},{"date":"2026-07-29","value":7.22},{"date":"2026-07-30","value":7.89},{"date":"2026-07-31","value":8.24},{"date":"2026-08-03","value":8.19},{"date":"2026-08-04","value":9.21},{"date":"2026-08-05","value":9.6},{"date":"2026-08-06","value":8.92},{"date":"2026-08-07","value":9.88},{"date":"2026-08-10","value":9.2},{"date":"2026-08-11","value":8.01},{"date":"2026-08-12","value":8.96},{"date":"2026-08-13","value":8.32},{"date":"2026-08-14","value":8.65},{"date":"2026-08-17","value":9.32},{"date":"2026-08-18","value":7.78},{"date":"2026-08-19","value":7.45}]},{"name":"富国","points":[{"date":"2026-06-09","value":7.92},{"date":"2026-06-10","value":6.57},{"date":"2026-06-11","value":8.25},{"date":"2026-06-12","value":6.21},{"date":"2026-06-15","value":10.02},{"date":"2026-06-16","value":7.65},{"date":"2026-06-17","value":9.92},{"date":"2026-06-18","value":10.53},{"date":"2026-06-23","value":4.53},{"date":"2026-06-24","value":8.69},{"date":"2026-06-25","value":10.4},{"date":"2026-06-26","value":6.36},{"date":"2026-06-29","value":8.14},{"date":"2026-06-30","value":7.2},{"date":"2026-07-01","value":5.78},{"date":"2026-07-02","value":4.9},{"date":"2026-07-03","value":7.34},{"date":"2026-07-06","value":7.46},{"date":"2026-07-07","value":5.57},{"date":"2026-07-08","value":5.74},{"date":"2026-07-09","value":6.9},{"date":"2026-07-10","value":5.42},{"date":"2026-07-13","value":4.37},{"date":"2026-07-14","value":6.61},{"date":"2026-07-15","value":6.84},{"date":"2026-07-16","value":6.27},{"date":"2026-07-17","value":4.55},{"date":"2026-07-20","value":6.42},{"date":"2026-07-21","value":8.32},{"date":"2026-07-22","value":5.95},{"date":"2026-07-23","value":6.39},{"date":"2026-07-24","value":7.1},{"date":"2026-07-27","value":9.4},{"date":"2026-07-28","value":7.14},{"date":"2026-07-29","value":8.34},{"date":"2026-07-30","value":8.56},{"date":"2026-07-31","value":9.13},{"date":"2026-08-03","value":8.97},{"date":"2026-08-04","value":9.82},{"date":"2026-08-05","value":9.92},{"date":"2026-08-06","value":9.4},{"date":"2026-08-07","value":10.3},{"date":"2026-08-10","value":9.46},{"date":"2026-08-11","value":8.13},{"date":"2026-08-12","value":8.94},{"date":"2026-08-13","value":8.33},{"date":"2026-08-14","value":8.95},{"date":"2026-08-17","value":9.72},{"date":"2026-08-18","value":8.16},{"date":"2026-08-19","value":7.7}]},{"name":"招商","points":[{"date":"2026-06-09","value":7.41},{"date":"2026-06-10","value":5.94},{"date":"2026-06-11","value":7.1},{"date":"2026-06-12","value":5.19},{"date":"2026-06-15","value":9.1},{"date":"2026-06-16","value":7.32},{"date":"2026-06-17","value":9.3},{"date":"2026-06-18","value":9.84},{"date":"2026-06-23","value":4.42},{"date":"2026-06-24","value":8.27},{"date":"2026-06-25","value":9.84},{"date":"2026-06-26","value":6.18},{"date":"2026-06-29","value":7.79},{"date":"2026-06-30","value":7.02},{"date":"2026-07-01","value":5.77},{"date":"2026-07-02","value":5.22},{"date":"2026-07-03","value":7.43},{"date":"2026-07-06","value":7.59},{"date":"2026-07-07","value":5.69},{"date":"2026-07-08","value":6.09},{"date":"2026-07-09","value":6.92},{"date":"2026-07-10","value":5.61},{"date":"2026-07-13","value":4.74},{"date":"2026-07-14","value":6.96},{"date":"2026-07-15","value":7.15},{"date":"2026-07-16","value":6.33},{"date":"2026-07-17","value":4.87},{"date":"2026-07-20","value":6.42},{"date":"2026-07-21","value":8.08},{"date":"2026-07-22","value":5.76},{"date":"2026-07-23","value":6.31},{"date":"2026-07-24","value":6.84},{"date":"2026-07-27","value":8.81},{"date":"2026-07-28","value":6.33},{"date":"2026-07-29","value":7.7},{"date":"2026-07-30","value":8.29},{"date":"2026-07-31","value":8.78},{"date":"2026-08-03","value":8.61},{"date":"2026-08-04","value":9.57},{"date":"2026-08-05","value":9.84},{"date":"2026-08-06","value":9.27},{"date":"2026-08-07","value":10.2},{"date":"2026-08-10","value":9.31},{"date":"2026-08-11","value":8.23},{"date":"2026-08-12","value":9.02},{"date":"2026-08-13","value":8.58},{"date":"2026-08-14","value":8.93},{"date":"2026-08-17","value":9.59},{"date":"2026-08-18","value":8.14},{"date":"2026-08-19","value":7.99}]},{"name":"国泰","points":[{"date":"2026-06-09","value":9.84},{"date":"2026-06-10","value":8.29},{"date":"2026-06-11","value":9.83},{"date":"2026-06-12","value":7.91},{"date":"2026-06-15","value":12.05},{"date":"2026-06-16","value":9.86},{"date":"2026-06-17","value":11.88},{"date":"2026-06-18","value":12.38},{"date":"2026-06-23","value":5.35},{"date":"2026-06-24","value":9.56},{"date":"2026-06-25","value":11.06},{"date":"2026-06-26","value":7.72},{"date":"2026-06-29","value":9.99},{"date":"2026-06-30","value":8.84},{"date":"2026-07-01","value":7.39},{"date":"2026-07-02","value":6.6},{"date":"2026-07-03","value":8.79},{"date":"2026-07-06","value":9.05},{"date":"2026-07-07","value":7.57},{"date":"2026-07-08","value":8.11},{"date":"2026-07-09","value":9.05},{"date":"2026-07-10","value":7.77},{"date":"2026-07-13","value":7.2},{"date":"2026-07-14","value":9.38},{"date":"2026-07-15","value":9.07},{"date":"2026-07-16","value":8.45},{"date":"2026-07-17","value":7.18},{"date":"2026-07-20","value":8.2},{"date":"2026-07-21","value":9.9},{"date":"2026-07-22","value":7.88},{"date":"2026-07-23","value":8.49},{"date":"2026-07-24","value":9.2},{"date":"2026-07-27","value":11.15},{"date":"2026-07-28","value":8.92},{"date":"2026-07-29","value":10.29},{"date":"2026-07-30","value":10.86},{"date":"2026-07-31","value":11.02},{"date":"2026-08-03","value":11.13},{"date":"2026-08-04","value":12.54},{"date":"2026-08-05","value":12.62},{"date":"2026-08-06","value":12.43},{"date":"2026-08-07","value":13.97},{"date":"2026-08-10","value":12.38},{"date":"2026-08-11","value":10.49},{"date":"2026-08-12","value":11.38},{"date":"2026-08-13","value":10.6},{"date":"2026-08-14","value":11.2},{"date":"2026-08-17","value":11.85},{"date":"2026-08-18","value":10.33},{"date":"2026-08-19","value":10.21}]},{"name":"华泰","points":[{"date":"2026-06-09","value":6.78},{"date":"2026-06-10","value":5.12},{"date":"2026-06-11","value":6.27},{"date":"2026-06-12","value":4.53},{"date":"2026-06-15","value":8.37},{"date":"2026-06-16","value":6.67},{"date":"2026-06-17","value":8.72},{"date":"2026-06-18","value":9.27},{"date":"2026-06-23","value":3.57},{"date":"2026-06-24","value":7.71},{"date":"2026-06-25","value":9.5},{"date":"2026-06-26","value":5.8},{"date":"2026-06-29","value":7.56},{"date":"2026-06-30","value":6.7},{"date":"2026-07-01","value":5.59},{"date":"2026-07-02","value":4.84},{"date":"2026-07-03","value":6.88},{"date":"2026-07-06","value":7.16},{"date":"2026-07-07","value":5.27},{"date":"2026-07-08","value":5.73},{"date":"2026-07-09","value":6.9},{"date":"2026-07-10","value":5.31},{"date":"2026-07-13","value":4.27},{"date":"2026-07-14","value":6.9},{"date":"2026-07-15","value":6.76},{"date":"2026-07-16","value":6.1},{"date":"2026-07-17","value":4.16},{"date":"2026-07-20","value":5.7},{"date":"2026-07-21","value":7.63},{"date":"2026-07-22","value":5.39},{"date":"2026-07-23","value":5.89},{"date":"2026-07-24","value":6.5},{"date":"2026-07-27","value":8.55},{"date":"2026-07-28","value":5.87},{"date":"2026-07-29","value":7.22},{"date":"2026-07-30","value":7.71},{"date":"2026-07-31","value":8.18},{"date":"2026-08-03","value":8.03},{"date":"2026-08-04","value":9.24},{"date":"2026-08-05","value":9.4},{"date":"2026-08-06","value":8.82},{"date":"2026-08-07","value":9.68},{"date":"2026-08-10","value":9.08},{"date":"2026-08-11","value":7.92},{"date":"2026-08-12","value":8.77},{"date":"2026-08-13","value":8.14},{"date":"2026-08-14","value":8.66},{"date":"2026-08-17","value":9.29},{"date":"2026-08-18","value":7.73},{"date":"2026-08-19","value":7.29}]},{"name":"博时","points":[{"date":"2026-06-09","value":7.82},{"date":"2026-06-10","value":6.24},{"date":"2026-06-11","value":7.41},{"date":"2026-06-12","value":5.7},{"date":"2026-06-15","value":9.64},{"date":"2026-06-16","value":7.66},{"date":"2026-06-17","value":9.78},{"date":"2026-06-18","value":10.53},{"date":"2026-06-23","value":4.23},{"date":"2026-06-24","value":8.32},{"date":"2026-06-25","value":10.01},{"date":"2026-06-26","value":6.28},{"date":"2026-06-29","value":8.16},{"date":"2026-06-30","value":7.22},{"date":"2026-07-01","value":5.77},{"date":"2026-07-02","value":4.84},{"date":"2026-07-03","value":7.2},{"date":"2026-07-06","value":7.35},{"date":"2026-07-07","value":5.46},{"date":"2026-07-08","value":5.55},{"date":"2026-07-09","value":6.8},{"date":"2026-07-10","value":5.3},{"date":"2026-07-13","value":4.32},{"date":"2026-07-14","value":6.53},{"date":"2026-07-15","value":6.68},{"date":"2026-07-16","value":6.0},{"date":"2026-07-17","value":4.16},{"date":"2026-07-20","value":5.7},{"date":"2026-07-21","value":7.66},{"date":"2026-07-22","value":5.42},{"date":"2026-07-23","value":5.87},{"date":"2026-07-24","value":6.5},{"date":"2026-07-27","value":8.66},{"date":"2026-07-28","value":6.01},{"date":"2026-07-29","value":7.46},{"date":"2026-07-30","value":7.97},{"date":"2026-07-31","value":8.41},{"date":"2026-08-03","value":8.28},{"date":"2026-08-04","value":9.4},{"date":"2026-08-05","value":9.71},{"date":"2026-08-06","value":8.97},{"date":"2026-08-07","value":10.02},{"date":"2026-08-10","value":9.2},{"date":"2026-08-11","value":7.96},{"date":"2026-08-12","value":8.69},{"date":"2026-08-13","value":8.1},{"date":"2026-08-14","value":8.71},{"date":"2026-08-17","value":9.43},{"date":"2026-08-18","value":7.78},{"date":"2026-08-19","value":7.39}]}];
+const styles=[{dash:'',cls:''},{dash:'9 5',cls:'dash'},{dash:'2 5',cls:'dot'},{dash:'11 4 2 4',cls:'mix'},{dash:'6 3',cls:'dash'},{dash:'1 4',cls:'dot'}];
+const colors=['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)'];
+const palette=()=>colors.map(color=>getComputedStyle(document.documentElement).getPropertyValue(color.slice(4,-1)).trim());
+const svg=document.getElementById('chart'),wrap=document.getElementById('chartWrap'),tip=document.getElementById('tooltip');
+let days='all';
+const dateFmt=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit'});
+const fullFmt=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+const pct=value=>value.toFixed(2)+'%';
+function filtered(){
+  const all=SERIES.flatMap(series=>series.points.map(point=>point.date)).sort();
+  const last=new Date(all[all.length-1]+'T00:00:00');
+  if(days==='all') return SERIES;
+  const cut=new Date(last); cut.setDate(cut.getDate()-Number(days));
+  return SERIES.map(series=>({...series,points:series.points.filter(point=>new Date(point.date+'T00:00:00')>=cut)}));
+}
+function renderLegend(){
+  document.getElementById('legend').innerHTML=SERIES.map((series,index)=>`<div class="legend-item"><span class="legend-line ${styles[index].cls}" style="--c:${colors[index]}"></span>${series.name}</div>`).join('');
+}
+function render(){
+  const shown=filtered(),width=svg.clientWidth||1000,height=svg.clientHeight||500,mobile=width<720;
+  const margin={left:mobile?52:64,right:mobile?18:98,top:20,bottom:52};
+  const innerWidth=width-margin.left-margin.right,innerHeight=height-margin.top-margin.bottom;
+  const dates=[...new Set(shown.flatMap(series=>series.points.map(point=>point.date)))].sort();
+  if(!dates.length) return;
+  const values=shown.flatMap(series=>series.points.map(point=>point.value));
+  const maximum=Math.max(1,Math.ceil((Math.max(...values)+.8)/2)*2);
+  const x=date=>margin.left+(dates.indexOf(date)/(dates.length-1||1))*innerWidth;
+  const y=value=>margin.top+(maximum-value)/maximum*innerHeight;
+  const paletteColors=palette();
+  const step=maximum<=10?2:Math.ceil(maximum/5/2)*2;
+  let output='';
+  for(let value=0;value<=maximum+.001;value+=step){
+    const yy=y(value);
+    output+=`<line class="${value===0?'axis':'grid'}" x1="${margin.left}" y1="${yy}" x2="${width-margin.right}" y2="${yy}"/><text class="tick" x="${margin.left-10}" y="${yy+4}" text-anchor="end">${value}%</text>`;
+  }
+  const tickCount=mobile?4:7;
+  for(let index=0;index<tickCount;index++){
+    const dateIndex=Math.round(index*(dates.length-1)/(tickCount-1)),xx=x(dates[dateIndex]);
+    output+=`<line class="axis" x1="${xx}" y1="${height-margin.bottom}" x2="${xx}" y2="${height-margin.bottom+5}"/><text class="tick" x="${xx}" y="${height-margin.bottom+24}" text-anchor="middle">${dateFmt.format(new Date(dates[dateIndex]+'T00:00:00'))}</text>`;
+  }
+  output+=`<text class="tick" transform="translate(17 ${margin.top+innerHeight/2}) rotate(-90)" text-anchor="middle">溢价率（%）</text>`;
+  const ends=[];
+  shown.forEach((series,index)=>{
+    const map=new Map(series.points.map(point=>[point.date,point.value]));
+    const points=dates.filter(date=>map.has(date)).map(date=>[x(date),y(map.get(date)),date,map.get(date)]);
+    const path=points.map((point,pointIndex)=>(pointIndex?'L':'M')+point[0].toFixed(1)+','+point[1].toFixed(1)).join(' ');
+    output+=`<path class="line" d="${path}" stroke="${paletteColors[index]}" stroke-dasharray="${styles[index].dash}"/>`;
+    const end=points[points.length-1];
+    output+=`<circle class="end-dot" cx="${end[0]}" cy="${end[1]}" r="4" fill="${paletteColors[index]}"/>`;
+    ends.push({x:end[0],y:end[1],name:series.name});
+  });
+  if(!mobile){
+    ends.sort((a,b)=>a.y-b.y);
+    for(let index=1;index<ends.length;index++) ends[index].y=Math.max(ends[index].y,ends[index-1].y+18);
+    const overflow=ends[ends.length-1].y-(height-margin.bottom-5);
+    if(overflow>0) ends.forEach(end=>end.y-=overflow);
+    ends.forEach(end=>output+=`<text class="direct" x="${end.x+9}" y="${end.y+4}">${end.name}</text>`);
+  }
+  output+=`<g id="hoverLayer" style="display:none"><line class="crosshair" id="cross" y1="${margin.top}" y2="${height-margin.bottom}"/><g id="dots"></g></g><rect id="hit" x="${margin.left}" y="${margin.top}" width="${innerWidth}" height="${innerHeight}" fill="transparent"/>`;
+  svg.innerHTML=output;
+  const hit=document.getElementById('hit');
+  const move=event=>{
+    const rect=svg.getBoundingClientRect(),clientX=event.clientX??event.touches?.[0]?.clientX;
+    const px=clientX-rect.left,index=Math.max(0,Math.min(dates.length-1,Math.round((px-margin.left)/innerWidth*(dates.length-1))));
+    showHover(index,dates,shown,x,y,paletteColors);
+  };
+  hit.addEventListener('pointermove',move);
+  hit.addEventListener('pointerenter',move);
+  hit.addEventListener('pointerleave',hideHover);
+  hit.addEventListener('pointerdown',move);
+}
+function showHover(index,dates,shown,x,y,paletteColors){
+  const date=dates[index],xx=x(date),layer=document.getElementById('hoverLayer'),cross=document.getElementById('cross');
+  layer.style.display=''; cross.setAttribute('x1',xx); cross.setAttribute('x2',xx);
+  const rows=[]; let dots='';
+  shown.forEach((series,seriesIndex)=>{
+    const point=series.points.find(item=>item.date===date);
+    if(!point) return;
+    dots+=`<circle class="hover-dot" cx="${xx}" cy="${y(point.value)}" r="5" fill="${paletteColors[seriesIndex]}"/>`;
+    rows.push(`<div class="tip-row"><span class="tip-name"><i class="swatch" style="--c:${paletteColors[seriesIndex]}"></i>${series.name}</span><span class="tip-value">${pct(point.value)}</span></div>`);
+  });
+  document.getElementById('dots').innerHTML=dots;
+  tip.innerHTML=`<div class="tooltip-date">${fullFmt.format(new Date(date+'T00:00:00'))}</div>${rows.join('')}`;
+  tip.style.display='block';
+  const left=xx+18+tip.offsetWidth>wrap.clientWidth?xx-tip.offsetWidth-14:xx+14;
+  tip.style.left=Math.max(6,left)+'px'; tip.style.top='42px';
+}
+function hideHover(){
+  const layer=document.getElementById('hoverLayer');
+  if(layer) layer.style.display='none';
+  tip.style.display='none';
+}
+function buildTable(){
+  const dates=[...new Set(SERIES.flatMap(series=>series.points.map(point=>point.date)))].sort().reverse();
+  const maps=SERIES.map(series=>new Map(series.points.map(point=>[point.date,point.value])));
+  document.getElementById('dataTable').innerHTML=`<thead><tr><th>日期</th>${SERIES.map(series=>`<th>${series.name}</th>`).join('')}</tr></thead><tbody>${dates.map(date=>`<tr><td>${date}</td>${maps.map(map=>`<td>${map.has(date)?pct(map.get(date)):'—'}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+renderLegend(); buildTable(); render();
+document.querySelectorAll('[data-days]').forEach(button=>button.onclick=()=>{
+  days=button.dataset.days;
+  document.querySelectorAll('[data-days]').forEach(item=>item.classList.toggle('active',item===button));
+  hideHover(); render();
+});
+document.getElementById('themeBtn').onclick=()=>{
+  const dark=document.documentElement.dataset.theme!=='dark';
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  document.getElementById('themeBtn').textContent=dark?'浅色模式':'深色模式';
+  render();
+};
+document.getElementById('tableBtn').onclick=()=>{
+  const section=document.getElementById('tableSection'),shown=section.classList.toggle('show');
+  document.getElementById('tableBtn').textContent=shown?'隐藏数据表':'查看数据表';
+};
+new ResizeObserver(()=>render()).observe(wrap);
+</script>
+
+<script>
+(() => {
+const SERIES2=[{"name":"国泰","points":[{"date":"2026-05-20","value":4.6},{"date":"2026-05-21","value":5.12},{"date":"2026-05-22","value":7.11},{"date":"2026-05-25","value":10.85},{"date":"2026-05-26","value":8.66},{"date":"2026-05-27","value":8.69},{"date":"2026-05-28","value":8.34},{"date":"2026-05-29","value":10.39},{"date":"2026-06-01","value":14.55},{"date":"2026-06-02","value":12.84},{"date":"2026-06-03","value":10.16},{"date":"2026-06-04","value":7.65},{"date":"2026-06-05","value":6.49},{"date":"2026-06-08","value":7.26},{"date":"2026-06-09","value":9.84},{"date":"2026-06-10","value":8.29},{"date":"2026-06-11","value":9.83},{"date":"2026-06-12","value":7.91},{"date":"2026-06-15","value":12.05},{"date":"2026-06-16","value":9.86},{"date":"2026-06-17","value":11.88},{"date":"2026-06-18","value":12.38},{"date":"2026-06-22","value":8.85},{"date":"2026-06-23","value":5.35},{"date":"2026-06-24","value":9.56},{"date":"2026-06-25","value":11.06},{"date":"2026-06-26","value":7.72},{"date":"2026-06-29","value":9.99},{"date":"2026-06-30","value":8.84},{"date":"2026-07-01","value":7.4},{"date":"2026-07-02","value":6.6},{"date":"2026-07-03","value":8.79},{"date":"2026-07-06","value":9.05},{"date":"2026-07-07","value":7.57},{"date":"2026-07-08","value":8.11},{"date":"2026-07-09","value":9.05},{"date":"2026-07-10","value":7.77},{"date":"2026-07-13","value":7.2},{"date":"2026-07-14","value":9.38},{"date":"2026-07-15","value":9.07},{"date":"2026-07-16","value":8.45},{"date":"2026-07-17","value":7.18},{"date":"2026-07-20","value":8.2},{"date":"2026-07-21","value":9.9},{"date":"2026-07-22","value":7.88},{"date":"2026-07-23","value":8.49},{"date":"2026-07-24","value":9.2},{"date":"2026-07-27","value":11.15},{"date":"2026-07-28","value":8.92},{"date":"2026-07-29","value":10.29},{"date":"2026-07-30","value":10.86},{"date":"2026-07-31","value":11.02},{"date":"2026-08-03","value":11.13},{"date":"2026-08-04","value":12.54},{"date":"2026-08-05","value":12.62},{"date":"2026-08-06","value":12.43},{"date":"2026-08-07","value":13.97},{"date":"2026-08-10","value":12.38},{"date":"2026-08-11","value":10.49},{"date":"2026-08-12","value":11.38},{"date":"2026-08-13","value":10.6},{"date":"2026-08-14","value":11.2},{"date":"2026-08-17","value":11.85},{"date":"2026-08-18","value":10.33}]},{"name":"博时","points":[{"date":"2026-05-20","value":2.9},{"date":"2026-05-21","value":2.24},{"date":"2026-05-22","value":3.69},{"date":"2026-05-25","value":7.11},{"date":"2026-05-26","value":6.0},{"date":"2026-05-27","value":6.34},{"date":"2026-05-28","value":5.43},{"date":"2026-05-29","value":7.52},{"date":"2026-06-01","value":11.16},{"date":"2026-06-02","value":9.2},{"date":"2026-06-03","value":7.19},{"date":"2026-06-04","value":5.12},{"date":"2026-06-05","value":4.34},{"date":"2026-06-08","value":5.42},{"date":"2026-06-09","value":7.82},{"date":"2026-06-10","value":6.24},{"date":"2026-06-11","value":7.41},{"date":"2026-06-12","value":5.7},{"date":"2026-06-15","value":9.64},{"date":"2026-06-16","value":7.66},{"date":"2026-06-17","value":9.78},{"date":"2026-06-18","value":10.53},{"date":"2026-06-22","value":7.55},{"date":"2026-06-23","value":4.23},{"date":"2026-06-24","value":8.32},{"date":"2026-06-25","value":10.01},{"date":"2026-06-26","value":6.28},{"date":"2026-06-29","value":8.16},{"date":"2026-06-30","value":7.22},{"date":"2026-07-01","value":5.77},{"date":"2026-07-02","value":4.84},{"date":"2026-07-03","value":7.2},{"date":"2026-07-06","value":7.35},{"date":"2026-07-07","value":5.46},{"date":"2026-07-08","value":5.55},{"date":"2026-07-09","value":6.8},{"date":"2026-07-10","value":5.3},{"date":"2026-07-13","value":4.32},{"date":"2026-07-14","value":6.53},{"date":"2026-07-15","value":6.68},{"date":"2026-07-16","value":6.0},{"date":"2026-07-17","value":4.16},{"date":"2026-07-20","value":5.7},{"date":"2026-07-21","value":7.66},{"date":"2026-07-22","value":5.42},{"date":"2026-07-23","value":5.87},{"date":"2026-07-24","value":6.5},{"date":"2026-07-27","value":8.66},{"date":"2026-07-28","value":6.01},{"date":"2026-07-29","value":7.46},{"date":"2026-07-30","value":7.97},{"date":"2026-07-31","value":8.41},{"date":"2026-08-03","value":8.28},{"date":"2026-08-04","value":9.4},{"date":"2026-08-05","value":9.71},{"date":"2026-08-06","value":8.97},{"date":"2026-08-07","value":10.02},{"date":"2026-08-10","value":9.2},{"date":"2026-08-11","value":7.96},{"date":"2026-08-12","value":8.69},{"date":"2026-08-13","value":8.1},{"date":"2026-08-14","value":8.71},{"date":"2026-08-17","value":9.43},{"date":"2026-08-18","value":7.78}]},{"name":"华安","points":[{"date":"2026-05-20","value":2.58},{"date":"2026-05-21","value":2.24},{"date":"2026-05-22","value":3.46},{"date":"2026-05-25","value":7.06},{"date":"2026-05-26","value":5.66},{"date":"2026-05-27","value":6.08},{"date":"2026-05-28","value":5.18},{"date":"2026-05-29","value":7.34},{"date":"2026-06-01","value":11.19},{"date":"2026-06-02","value":9.12},{"date":"2026-06-03","value":6.92},{"date":"2026-06-04","value":4.7},{"date":"2026-06-05","value":3.8},{"date":"2026-06-08","value":4.68},{"date":"2026-06-09","value":6.79},{"date":"2026-06-10","value":5.1},{"date":"2026-06-11","value":6.21},{"date":"2026-06-12","value":4.52},{"date":"2026-06-15","value":8.37},{"date":"2026-06-16","value":6.75},{"date":"2026-06-17","value":8.8},{"date":"2026-06-18","value":9.31},{"date":"2026-06-22","value":6.87},{"date":"2026-06-23","value":3.65},{"date":"2026-06-24","value":7.86},{"date":"2026-06-25","value":9.76},{"date":"2026-06-26","value":5.97},{"date":"2026-06-29","value":7.62},{"date":"2026-06-30","value":7.07},{"date":"2026-07-01","value":5.79},{"date":"2026-07-02","value":4.75},{"date":"2026-07-03","value":6.93},{"date":"2026-07-06","value":7.17},{"date":"2026-07-07","value":5.42},{"date":"2026-07-08","value":5.63},{"date":"2026-07-09","value":6.91},{"date":"2026-07-10","value":5.36},{"date":"2026-07-13","value":4.3},{"date":"2026-07-14","value":6.59},{"date":"2026-07-15","value":7.08},{"date":"2026-07-16","value":6.06},{"date":"2026-07-17","value":4.17},{"date":"2026-07-20","value":5.76},{"date":"2026-07-21","value":7.61},{"date":"2026-07-22","value":5.37},{"date":"2026-07-23","value":5.91},{"date":"2026-07-24","value":6.48},{"date":"2026-07-27","value":8.49},{"date":"2026-07-28","value":5.87},{"date":"2026-07-29","value":7.22},{"date":"2026-07-30","value":7.89},{"date":"2026-07-31","value":8.24},{"date":"2026-08-03","value":8.19},{"date":"2026-08-04","value":9.21},{"date":"2026-08-05","value":9.6},{"date":"2026-08-06","value":8.92},{"date":"2026-08-07","value":9.88},{"date":"2026-08-10","value":9.2},{"date":"2026-08-11","value":8.01},{"date":"2026-08-12","value":8.96},{"date":"2026-08-13","value":8.32},{"date":"2026-08-14","value":8.65},{"date":"2026-08-17","value":9.32},{"date":"2026-08-18","value":7.78}]},{"name":"华泰","points":[{"date":"2026-05-20","value":2.53},{"date":"2026-05-21","value":2.1},{"date":"2026-05-22","value":3.39},{"date":"2026-05-25","value":7.16},{"date":"2026-05-26","value":5.74},{"date":"2026-05-27","value":6.01},{"date":"2026-05-28","value":5.16},{"date":"2026-05-29","value":7.42},{"date":"2026-06-01","value":11.73},{"date":"2026-06-02","value":9.13},{"date":"2026-06-03","value":6.95},{"date":"2026-06-04","value":4.59},{"date":"2026-06-05","value":3.59},{"date":"2026-06-08","value":4.58},{"date":"2026-06-09","value":6.78},{"date":"2026-06-10","value":5.12},{"date":"2026-06-11","value":6.27},{"date":"2026-06-12","value":4.53},{"date":"2026-06-15","value":8.37},{"date":"2026-06-16","value":6.67},{"date":"2026-06-17","value":8.72},{"date":"2026-06-18","value":9.27},{"date":"2026-06-22","value":6.83},{"date":"2026-06-23","value":3.57},{"date":"2026-06-24","value":7.71},{"date":"2026-06-25","value":9.5},{"date":"2026-06-26","value":5.8},{"date":"2026-06-29","value":7.56},{"date":"2026-06-30","value":6.7},{"date":"2026-07-01","value":5.59},{"date":"2026-07-02","value":4.84},{"date":"2026-07-03","value":6.88},{"date":"2026-07-06","value":7.16},{"date":"2026-07-07","value":5.27},{"date":"2026-07-08","value":5.73},{"date":"2026-07-09","value":6.9},{"date":"2026-07-10","value":5.31},{"date":"2026-07-13","value":4.27},{"date":"2026-07-14","value":6.9},{"date":"2026-07-15","value":6.76},{"date":"2026-07-16","value":6.1},{"date":"2026-07-17","value":4.16},{"date":"2026-07-20","value":5.7},{"date":"2026-07-21","value":7.63},{"date":"2026-07-22","value":5.39},{"date":"2026-07-23","value":5.89},{"date":"2026-07-24","value":6.5},{"date":"2026-07-27","value":8.55},{"date":"2026-07-28","value":5.87},{"date":"2026-07-29","value":7.22},{"date":"2026-07-30","value":7.71},{"date":"2026-07-31","value":8.18},{"date":"2026-08-03","value":8.03},{"date":"2026-08-04","value":9.24},{"date":"2026-08-05","value":9.4},{"date":"2026-08-06","value":8.82},{"date":"2026-08-07","value":9.68},{"date":"2026-08-10","value":9.08},{"date":"2026-08-11","value":7.92},{"date":"2026-08-12","value":8.77},{"date":"2026-08-13","value":8.14},{"date":"2026-08-14","value":8.66},{"date":"2026-08-17","value":9.29},{"date":"2026-08-18","value":7.73}]}];
+const styles2=[{dash:'',cls:''},{dash:'9 5',cls:'dash'},{dash:'2 5',cls:'dot'},{dash:'11 4 2 4',cls:'mix'}];
+const colors2=['var(--s1)','var(--s2)','var(--s3)','var(--s4)'];
+const svg2=document.getElementById('chart2'),wrap2=document.getElementById('chartWrap2'),tip2=document.getElementById('tooltip2');
+let days2='all';
+const dateFmt2=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit'});
+const fullFmt2=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+const pct2=value=>value.toFixed(2)+'%';
+const palette2=()=>colors2.map(color=>getComputedStyle(document.documentElement).getPropertyValue(color.slice(4,-1)).trim());
+function filtered2(){
+  const all=SERIES2.flatMap(series=>series.points.map(point=>point.date)).sort();
+  if(days2==='all') return SERIES2;
+  const last=new Date(all[all.length-1]+'T00:00:00'),cut=new Date(last);
+  cut.setDate(cut.getDate()-Number(days2));
+  return SERIES2.map(series=>({...series,points:series.points.filter(point=>new Date(point.date+'T00:00:00')>=cut)}));
+}
+function renderLegend2(){
+  document.getElementById('legend2').innerHTML=SERIES2.map((series,index)=>`<div class="legend-item"><span class="legend-line ${styles2[index].cls}" style="--c:${colors2[index]}"></span>${series.name}</div>`).join('');
+}
+function render2(){
+  const shown=filtered2(),width=svg2.clientWidth||1000,height=svg2.clientHeight||500,mobile=width<720;
+  const margin={left:mobile?52:64,right:mobile?18:98,top:20,bottom:52};
+  const innerWidth=width-margin.left-margin.right,innerHeight=height-margin.top-margin.bottom;
+  const dates=[...new Set(shown.flatMap(series=>series.points.map(point=>point.date)))].sort();
+  if(!dates.length) return;
+  const values=shown.flatMap(series=>series.points.map(point=>point.value));
+  const maximum=Math.max(1,Math.ceil((Math.max(...values)+.8)/2)*2);
+  const x=date=>margin.left+(dates.indexOf(date)/(dates.length-1||1))*innerWidth;
+  const y=value=>margin.top+(maximum-value)/maximum*innerHeight;
+  const paletteColors=palette2(),step=maximum<=10?2:Math.ceil(maximum/5/2)*2;
+  let output='';
+  for(let value=0;value<=maximum+.001;value+=step){
+    const yy=y(value);
+    output+=`<line class="${value===0?'axis':'grid'}" x1="${margin.left}" y1="${yy}" x2="${width-margin.right}" y2="${yy}"/><text class="tick" x="${margin.left-10}" y="${yy+4}" text-anchor="end">${value}%</text>`;
+  }
+  const tickCount=mobile?4:7;
+  for(let index=0;index<tickCount;index++){
+    const dateIndex=Math.round(index*(dates.length-1)/(tickCount-1)),xx=x(dates[dateIndex]);
+    output+=`<line class="axis" x1="${xx}" y1="${height-margin.bottom}" x2="${xx}" y2="${height-margin.bottom+5}"/><text class="tick" x="${xx}" y="${height-margin.bottom+24}" text-anchor="middle">${dateFmt2.format(new Date(dates[dateIndex]+'T00:00:00'))}</text>`;
+  }
+  output+=`<text class="tick" transform="translate(17 ${margin.top+innerHeight/2}) rotate(-90)" text-anchor="middle">T-1日溢价率（%）</text>`;
+  const ends=[];
+  shown.forEach((series,index)=>{
+    const map=new Map(series.points.map(point=>[point.date,point.value]));
+    const points=dates.filter(date=>map.has(date)).map(date=>[x(date),y(map.get(date))]);
+    const path=points.map((point,pointIndex)=>(pointIndex?'L':'M')+point[0].toFixed(1)+','+point[1].toFixed(1)).join(' ');
+    output+=`<path class="line" d="${path}" stroke="${paletteColors[index]}" stroke-dasharray="${styles2[index].dash}"/>`;
+    const last=points[points.length-1];
+    output+=`<circle class="end-dot" cx="${last[0]}" cy="${last[1]}" r="4" fill="${paletteColors[index]}"/>`;
+    ends.push({x:last[0],y:last[1],name:series.name});
+  });
+  if(!mobile){
+    ends.sort((a,b)=>a.y-b.y);
+    for(let index=1;index<ends.length;index++) ends[index].y=Math.max(ends[index].y,ends[index-1].y+18);
+    ends.forEach(end=>output+=`<text class="direct" x="${end.x+9}" y="${end.y+4}">${end.name}</text>`);
+  }
+  output+=`<g id="hoverLayer2" style="display:none"><line class="crosshair" id="cross2" y1="${margin.top}" y2="${height-margin.bottom}"/><g id="dots2"></g></g><rect id="hit2" x="${margin.left}" y="${margin.top}" width="${innerWidth}" height="${innerHeight}" fill="transparent"/>`;
+  svg2.innerHTML=output;
+  const hit=document.getElementById('hit2');
+  const move=event=>{
+    const rect=svg2.getBoundingClientRect(),px=event.clientX-rect.left;
+    const index=Math.max(0,Math.min(dates.length-1,Math.round((px-margin.left)/innerWidth*(dates.length-1))));
+    showHover2(index,dates,shown,x,y,paletteColors);
+  };
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerenter',move); hit.addEventListener('pointerleave',hideHover2); hit.addEventListener('pointerdown',move);
+}
+function showHover2(index,dates,shown,x,y,paletteColors){
+  const date=dates[index],xx=x(date),layer=document.getElementById('hoverLayer2'),cross=document.getElementById('cross2');
+  layer.style.display=''; cross.setAttribute('x1',xx); cross.setAttribute('x2',xx);
+  let dots=''; const rows=[];
+  shown.forEach((series,seriesIndex)=>{
+    const point=series.points.find(item=>item.date===date); if(!point) return;
+    dots+=`<circle class="hover-dot" cx="${xx}" cy="${y(point.value)}" r="5" fill="${paletteColors[seriesIndex]}"/>`;
+    rows.push(`<div class="tip-row"><span class="tip-name"><i class="swatch" style="--c:${paletteColors[seriesIndex]}"></i>${series.name}</span><span class="tip-value">${pct2(point.value)}</span></div>`);
+  });
+  document.getElementById('dots2').innerHTML=dots;
+  tip2.innerHTML=`<div class="tooltip-date">${fullFmt2.format(new Date(date+'T00:00:00'))}</div>${rows.join('')}`;
+  tip2.style.display='block';
+  const left=xx+18+tip2.offsetWidth>wrap2.clientWidth?xx-tip2.offsetWidth-14:xx+14;
+  tip2.style.left=Math.max(6,left)+'px'; tip2.style.top='42px';
+}
+function hideHover2(){ const layer=document.getElementById('hoverLayer2'); if(layer) layer.style.display='none'; tip2.style.display='none'; }
+function buildTable2(){
+  const dates=[...new Set(SERIES2.flatMap(series=>series.points.map(point=>point.date)))].sort().reverse();
+  const maps=SERIES2.map(series=>new Map(series.points.map(point=>[point.date,point.value])));
+  document.getElementById('dataTable2').innerHTML=`<thead><tr><th>日期</th>${SERIES2.map(series=>`<th>${series.name}</th>`).join('')}</tr></thead><tbody>${dates.map(date=>`<tr><td>${date}</td>${maps.map(map=>`<td>${map.has(date)?pct2(map.get(date)):'—'}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+renderLegend2(); buildTable2(); render2();
+document.querySelectorAll('[data-days-2]').forEach(button=>button.onclick=()=>{
+  days2=button.dataset.days2;
+  document.querySelectorAll('[data-days-2]').forEach(item=>item.classList.toggle('active',item===button));
+  hideHover2(); render2();
+});
+document.getElementById('tableBtn2').onclick=()=>{
+  const section=document.getElementById('tableSection2'),shown=section.classList.toggle('show');
+  document.getElementById('tableBtn2').textContent=shown?'隐藏数据表':'查看数据表';
+};
+new ResizeObserver(()=>render2()).observe(wrap2);
+new MutationObserver(()=>render2()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+<script>
+(() => {
+const SERIES3=[{"name":"华安","points":[{"date":"2026-06-09","value":65842.16},{"date":"2026-06-10","value":62196.23},{"date":"2026-06-11","value":82786.77},{"date":"2026-06-12","value":65901.26},{"date":"2026-06-15","value":64594.2},{"date":"2026-06-16","value":69913.67},{"date":"2026-06-17","value":68921.92},{"date":"2026-06-18","value":66898.34},{"date":"2026-06-23","value":53429.83},{"date":"2026-06-24","value":46081.65},{"date":"2026-06-25","value":36218.69},{"date":"2026-06-26","value":55934.38},{"date":"2026-06-29","value":31804.86},{"date":"2026-06-30","value":34647.03},{"date":"2026-07-01","value":43856.68},{"date":"2026-07-02","value":33420.72},{"date":"2026-07-03","value":35896.72},{"date":"2026-07-06","value":23454.82},{"date":"2026-07-07","value":44867.73},{"date":"2026-07-08","value":36420.48},{"date":"2026-07-09","value":33417.11},{"date":"2026-07-10","value":45534.58},{"date":"2026-07-13","value":20213.7},{"date":"2026-07-14","value":32116.08},{"date":"2026-07-15","value":28547.71},{"date":"2026-07-16","value":34281.48},{"date":"2026-07-17","value":51015.84},{"date":"2026-07-20","value":26186.85},{"date":"2026-07-21","value":26874.67},{"date":"2026-07-22","value":28607.32},{"date":"2026-07-23","value":17113.27},{"date":"2026-07-24","value":24315.89},{"date":"2026-07-27","value":28154.04},{"date":"2026-07-28","value":36773.58},{"date":"2026-07-29","value":30434.06},{"date":"2026-07-30","value":27008.03},{"date":"2026-07-31","value":34625.73},{"date":"2026-08-03","value":25796.34},{"date":"2026-08-04","value":34571.55},{"date":"2026-08-05","value":53147.03},{"date":"2026-08-06","value":33522.42},{"date":"2026-08-07","value":34617.24},{"date":"2026-08-10","value":43156.0},{"date":"2026-08-11","value":27331.53},{"date":"2026-08-12","value":19687.4},{"date":"2026-08-13","value":18122.91},{"date":"2026-08-14","value":28483.73},{"date":"2026-08-17","value":24296.4},{"date":"2026-08-18","value":28502.01},{"date":"2026-08-19","value":36146.05}]},{"name":"富国","points":[{"date":"2026-06-09","value":18354.22},{"date":"2026-06-10","value":12571.13},{"date":"2026-06-11","value":12420.43},{"date":"2026-06-12","value":16082.21},{"date":"2026-06-15","value":16767.65},{"date":"2026-06-16","value":15858.78},{"date":"2026-06-17","value":17716.56},{"date":"2026-06-18","value":12735.39},{"date":"2026-06-23","value":12852.29},{"date":"2026-06-24","value":15867.15},{"date":"2026-06-25","value":11520.57},{"date":"2026-06-26","value":13983.22},{"date":"2026-06-29","value":13650.49},{"date":"2026-06-30","value":12565.05},{"date":"2026-07-01","value":18213.02},{"date":"2026-07-02","value":16712.39},{"date":"2026-07-03","value":16503.81},{"date":"2026-07-06","value":17842.72},{"date":"2026-07-07","value":17346.61},{"date":"2026-07-08","value":24935.45},{"date":"2026-07-09","value":16588.08},{"date":"2026-07-10","value":19015.7},{"date":"2026-07-13","value":16721.75},{"date":"2026-07-14","value":18980.09},{"date":"2026-07-15","value":11786.86},{"date":"2026-07-16","value":10312.93},{"date":"2026-07-17","value":16168.36},{"date":"2026-07-20","value":8165.12},{"date":"2026-07-21","value":9635.94},{"date":"2026-07-22","value":9135.32},{"date":"2026-07-23","value":7037.21},{"date":"2026-07-24","value":6520.23},{"date":"2026-07-27","value":6857.54},{"date":"2026-07-28","value":8172.22},{"date":"2026-07-29","value":11049.58},{"date":"2026-07-30","value":12862.02},{"date":"2026-07-31","value":12648.77},{"date":"2026-08-03","value":8606.7},{"date":"2026-08-04","value":14331.72},{"date":"2026-08-05","value":21226.01},{"date":"2026-08-06","value":14194.9},{"date":"2026-08-07","value":8430.41},{"date":"2026-08-10","value":8403.41},{"date":"2026-08-11","value":11408.97},{"date":"2026-08-12","value":7251.22},{"date":"2026-08-13","value":7694.26},{"date":"2026-08-14","value":9952.24},{"date":"2026-08-17","value":8302.89},{"date":"2026-08-18","value":7678.89},{"date":"2026-08-19","value":10293.23}]},{"name":"招商","points":[{"date":"2026-06-09","value":37455.74},{"date":"2026-06-10","value":33909.25},{"date":"2026-06-11","value":41347.66},{"date":"2026-06-12","value":41722.16},{"date":"2026-06-15","value":56844.91},{"date":"2026-06-16","value":59711.76},{"date":"2026-06-17","value":45977.64},{"date":"2026-06-18","value":43038.03},{"date":"2026-06-23","value":46502.47},{"date":"2026-06-24","value":45551.24},{"date":"2026-06-25","value":42937.63},{"date":"2026-06-26","value":59789.7},{"date":"2026-06-29","value":62887.61},{"date":"2026-06-30","value":53805.45},{"date":"2026-07-01","value":31465.56},{"date":"2026-07-02","value":23752.87},{"date":"2026-07-03","value":26345.29},{"date":"2026-07-06","value":19068.1},{"date":"2026-07-07","value":25272.65},{"date":"2026-07-08","value":19847.74},{"date":"2026-07-09","value":20089.7},{"date":"2026-07-10","value":16157.47},{"date":"2026-07-13","value":17982.39},{"date":"2026-07-14","value":19480.64},{"date":"2026-07-15","value":16923.13},{"date":"2026-07-16","value":21198.0},{"date":"2026-07-17","value":29155.8},{"date":"2026-07-20","value":15040.61},{"date":"2026-07-21","value":18008.89},{"date":"2026-07-22","value":20983.73},{"date":"2026-07-23","value":11213.24},{"date":"2026-07-24","value":19047.11},{"date":"2026-07-27","value":15738.34},{"date":"2026-07-28","value":27955.82},{"date":"2026-07-29","value":18262.1},{"date":"2026-07-30","value":16424.74},{"date":"2026-07-31","value":27301.02},{"date":"2026-08-03","value":18087.55},{"date":"2026-08-04","value":25606.93},{"date":"2026-08-05","value":40491.36},{"date":"2026-08-06","value":28379.18},{"date":"2026-08-07","value":20532.74},{"date":"2026-08-10","value":27493.21},{"date":"2026-08-11","value":25864.27},{"date":"2026-08-12","value":18003.04},{"date":"2026-08-13","value":16406.37},{"date":"2026-08-14","value":29263.91},{"date":"2026-08-17","value":18736.83},{"date":"2026-08-18","value":20336.26},{"date":"2026-08-19","value":22858.21}]},{"name":"国泰","points":[{"date":"2026-06-09","value":150654.11},{"date":"2026-06-10","value":89310.96},{"date":"2026-06-11","value":102638.17},{"date":"2026-06-12","value":105153.78},{"date":"2026-06-15","value":113611.98},{"date":"2026-06-16","value":74443.55},{"date":"2026-06-17","value":73462.02},{"date":"2026-06-18","value":83048.91},{"date":"2026-06-23","value":127007.0},{"date":"2026-06-24","value":115470.23},{"date":"2026-06-25","value":74548.45},{"date":"2026-06-26","value":65010.02},{"date":"2026-06-29","value":67740.82},{"date":"2026-06-30","value":63950.56},{"date":"2026-07-01","value":68263.18},{"date":"2026-07-02","value":74515.77},{"date":"2026-07-03","value":72628.43},{"date":"2026-07-06","value":44176.99},{"date":"2026-07-07","value":45893.49},{"date":"2026-07-08","value":41093.33},{"date":"2026-07-09","value":48235.06},{"date":"2026-07-10","value":40172.94},{"date":"2026-07-13","value":42710.72},{"date":"2026-07-14","value":61711.75},{"date":"2026-07-15","value":66067.16},{"date":"2026-07-16","value":41319.46},{"date":"2026-07-17","value":67069.65},{"date":"2026-07-20","value":36257.22},{"date":"2026-07-21","value":58726.13},{"date":"2026-07-22","value":38953.52},{"date":"2026-07-23","value":30377.44},{"date":"2026-07-24","value":30102.0},{"date":"2026-07-27","value":30705.14},{"date":"2026-07-28","value":25611.0},{"date":"2026-07-29","value":28584.14},{"date":"2026-07-30","value":22340.9},{"date":"2026-07-31","value":35643.69},{"date":"2026-08-03","value":21735.34},{"date":"2026-08-04","value":38930.76},{"date":"2026-08-05","value":50929.24},{"date":"2026-08-06","value":42716.2},{"date":"2026-08-07","value":44859.41},{"date":"2026-08-10","value":43831.04},{"date":"2026-08-11","value":42698.89},{"date":"2026-08-12","value":30327.88},{"date":"2026-08-13","value":29074.45},{"date":"2026-08-14","value":36806.88},{"date":"2026-08-17","value":34827.24},{"date":"2026-08-18","value":24976.1},{"date":"2026-08-19","value":35498.12}]},{"name":"华泰","points":[{"date":"2026-06-09","value":44485.55},{"date":"2026-06-10","value":37519.96},{"date":"2026-06-11","value":43857.67},{"date":"2026-06-12","value":40992.27},{"date":"2026-06-15","value":41516.62},{"date":"2026-06-16","value":49773.67},{"date":"2026-06-17","value":42052.04},{"date":"2026-06-18","value":49812.51},{"date":"2026-06-23","value":44238.96},{"date":"2026-06-24","value":38885.87},{"date":"2026-06-25","value":32984.03},{"date":"2026-06-26","value":40903.06},{"date":"2026-06-29","value":30225.78},{"date":"2026-06-30","value":40680.88},{"date":"2026-07-01","value":30853.39},{"date":"2026-07-02","value":25373.29},{"date":"2026-07-03","value":28565.15},{"date":"2026-07-06","value":31706.55},{"date":"2026-07-07","value":22510.22},{"date":"2026-07-08","value":15845.84},{"date":"2026-07-09","value":14788.54},{"date":"2026-07-10","value":15291.4},{"date":"2026-07-13","value":16904.19},{"date":"2026-07-14","value":16725.62},{"date":"2026-07-15","value":11871.5},{"date":"2026-07-16","value":14543.63},{"date":"2026-07-17","value":26173.16},{"date":"2026-07-20","value":16999.28},{"date":"2026-07-21","value":16494.69},{"date":"2026-07-22","value":12786.65},{"date":"2026-07-23","value":12385.53},{"date":"2026-07-24","value":12035.95},{"date":"2026-07-27","value":11831.72},{"date":"2026-07-28","value":20309.9},{"date":"2026-07-29","value":22534.58},{"date":"2026-07-30","value":24768.9},{"date":"2026-07-31","value":25845.66},{"date":"2026-08-03","value":16387.19},{"date":"2026-08-04","value":24432.77},{"date":"2026-08-05","value":31607.33},{"date":"2026-08-06","value":21740.14},{"date":"2026-08-07","value":23614.01},{"date":"2026-08-10","value":28211.11},{"date":"2026-08-11","value":15652.45},{"date":"2026-08-12","value":11756.1},{"date":"2026-08-13","value":16966.17},{"date":"2026-08-14","value":24727.07},{"date":"2026-08-17","value":19460.13},{"date":"2026-08-18","value":20094.45},{"date":"2026-08-19","value":24118.15}]},{"name":"博时","points":[{"date":"2026-06-09","value":14892.58},{"date":"2026-06-10","value":11743.87},{"date":"2026-06-11","value":11497.39},{"date":"2026-06-12","value":10675.16},{"date":"2026-06-15","value":16756.18},{"date":"2026-06-16","value":17876.39},{"date":"2026-06-17","value":15417.72},{"date":"2026-06-18","value":12268.53},{"date":"2026-06-23","value":14243.06},{"date":"2026-06-24","value":17259.73},{"date":"2026-06-25","value":12239.36},{"date":"2026-06-26","value":14038.65},{"date":"2026-06-29","value":8713.66},{"date":"2026-06-30","value":9812.8},{"date":"2026-07-01","value":12572.69},{"date":"2026-07-02","value":20319.69},{"date":"2026-07-03","value":17172.96},{"date":"2026-07-06","value":30885.09},{"date":"2026-07-07","value":29150.45},{"date":"2026-07-08","value":47616.9},{"date":"2026-07-09","value":39110.98},{"date":"2026-07-10","value":26807.48},{"date":"2026-07-13","value":20830.83},{"date":"2026-07-14","value":32142.24},{"date":"2026-07-15","value":21795.29},{"date":"2026-07-16","value":18397.56},{"date":"2026-07-17","value":25709.43},{"date":"2026-07-20","value":16043.41},{"date":"2026-07-21","value":16023.96},{"date":"2026-07-22","value":19799.66},{"date":"2026-07-23","value":14237.65},{"date":"2026-07-24","value":14533.37},{"date":"2026-07-27","value":18159.24},{"date":"2026-07-28","value":18644.02},{"date":"2026-07-29","value":13175.14},{"date":"2026-07-30","value":17959.84},{"date":"2026-07-31","value":16615.09},{"date":"2026-08-03","value":9172.64},{"date":"2026-08-04","value":14899.52},{"date":"2026-08-05","value":21138.44},{"date":"2026-08-06","value":21784.1},{"date":"2026-08-07","value":12007.54},{"date":"2026-08-10","value":12222.32},{"date":"2026-08-11","value":12309.79},{"date":"2026-08-12","value":11768.56},{"date":"2026-08-13","value":11652.1},{"date":"2026-08-14","value":15314.38},{"date":"2026-08-17","value":11797.59},{"date":"2026-08-18","value":10921.88},{"date":"2026-08-19","value":16725.08}]}];
+const styles3=[{dash:'',cls:''},{dash:'9 5',cls:'dash'},{dash:'2 5',cls:'dot'},{dash:'11 4 2 4',cls:'mix'},{dash:'6 3',cls:'dash'},{dash:'1 4',cls:'dot'}];
+const colors3=['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)'];
+const svg3=document.getElementById('chart3'),wrap3=document.getElementById('chartWrap3'),tip3=document.getElementById('tooltip3');
+let days3='all';
+const dateFmt3=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit'});
+const fullFmt3=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+const numberFmt3=new Intl.NumberFormat('zh-CN',{maximumFractionDigits:0});
+const valueFmt3=new Intl.NumberFormat('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const palette3=()=>colors3.map(color=>getComputedStyle(document.documentElement).getPropertyValue(color.slice(4,-1)).trim());
+function filtered3(){
+  const all=SERIES3.flatMap(series=>series.points.map(point=>point.date)).sort();
+  if(days3==='all') return SERIES3;
+  const last=new Date(all[all.length-1]+'T00:00:00'),cut=new Date(last);
+  cut.setDate(cut.getDate()-Number(days3));
+  return SERIES3.map(series=>({...series,points:series.points.filter(point=>new Date(point.date+'T00:00:00')>=cut)}));
+}
+function renderLegend3(){
+  document.getElementById('legend3').innerHTML=SERIES3.map((series,index)=>`<div class="legend-item"><span class="legend-line ${styles3[index].cls}" style="--c:${colors3[index]}"></span>${series.name}</div>`).join('');
+}
+function niceMaximum3(value){
+  const magnitude=Math.pow(10,Math.floor(Math.log10(value)));
+  return Math.ceil(value/magnitude*2)/2*magnitude;
+}
+function render3(){
+  const shown=filtered3(),width=svg3.clientWidth||1000,height=svg3.clientHeight||500,mobile=width<720;
+  const margin={left:mobile?70:88,right:mobile?18:30,top:20,bottom:52};
+  const innerWidth=width-margin.left-margin.right,innerHeight=height-margin.top-margin.bottom;
+  const dates=[...new Set(shown.flatMap(series=>series.points.map(point=>point.date)))].sort();
+  if(!dates.length) return;
+  const values=shown.flatMap(series=>series.points.map(point=>point.value));
+  const maximum=niceMaximum3(Math.max(...values)*1.08),tickSteps=5;
+  const x=date=>margin.left+(dates.indexOf(date)/(dates.length-1||1))*innerWidth;
+  const y=value=>margin.top+(maximum-value)/maximum*innerHeight;
+  const paletteColors=palette3();
+  let output='';
+  for(let index=0;index<=tickSteps;index++){
+    const value=maximum*index/tickSteps,yy=y(value);
+    output+=`<line class="${index===0?'axis':'grid'}" x1="${margin.left}" y1="${yy}" x2="${width-margin.right}" y2="${yy}"/><text class="tick" x="${margin.left-10}" y="${yy+4}" text-anchor="end">${numberFmt3.format(value)}</text>`;
+  }
+  const tickCount=mobile?4:7;
+  for(let index=0;index<tickCount;index++){
+    const dateIndex=Math.round(index*(dates.length-1)/(tickCount-1)),xx=x(dates[dateIndex]);
+    output+=`<line class="axis" x1="${xx}" y1="${height-margin.bottom}" x2="${xx}" y2="${height-margin.bottom+5}"/><text class="tick" x="${xx}" y="${height-margin.bottom+24}" text-anchor="middle">${dateFmt3.format(new Date(dates[dateIndex]+'T00:00:00'))}</text>`;
+  }
+  output+=`<text class="tick" transform="translate(17 ${margin.top+innerHeight/2}) rotate(-90)" text-anchor="middle">成交额（万元）</text>`;
+  shown.forEach((series,index)=>{
+    const map=new Map(series.points.map(point=>[point.date,point.value]));
+    const points=dates.filter(date=>map.has(date)).map(date=>[x(date),y(map.get(date))]);
+    const path=points.map((point,pointIndex)=>(pointIndex?'L':'M')+point[0].toFixed(1)+','+point[1].toFixed(1)).join(' ');
+    output+=`<path class="line" d="${path}" stroke="${paletteColors[index]}" stroke-dasharray="${styles3[index].dash}"/>`;
+    const last=points[points.length-1];
+    output+=`<circle class="end-dot" cx="${last[0]}" cy="${last[1]}" r="4" fill="${paletteColors[index]}"/>`;
+  });
+  output+=`<g id="hoverLayer3" style="display:none"><line class="crosshair" id="cross3" y1="${margin.top}" y2="${height-margin.bottom}"/><g id="dots3"></g></g><rect id="hit3" x="${margin.left}" y="${margin.top}" width="${innerWidth}" height="${innerHeight}" fill="transparent"/>`;
+  svg3.innerHTML=output;
+  const hit=document.getElementById('hit3');
+  const move=event=>{
+    const rect=svg3.getBoundingClientRect(),px=event.clientX-rect.left;
+    const index=Math.max(0,Math.min(dates.length-1,Math.round((px-margin.left)/innerWidth*(dates.length-1))));
+    showHover3(index,dates,shown,x,y,paletteColors);
+  };
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerenter',move); hit.addEventListener('pointerleave',hideHover3); hit.addEventListener('pointerdown',move);
+}
+function showHover3(index,dates,shown,x,y,paletteColors){
+  const date=dates[index],xx=x(date),layer=document.getElementById('hoverLayer3'),cross=document.getElementById('cross3');
+  layer.style.display=''; cross.setAttribute('x1',xx); cross.setAttribute('x2',xx);
+  let dots=''; const rows=[];
+  shown.forEach((series,seriesIndex)=>{
+    const point=series.points.find(item=>item.date===date); if(!point) return;
+    dots+=`<circle class="hover-dot" cx="${xx}" cy="${y(point.value)}" r="5" fill="${paletteColors[seriesIndex]}"/>`;
+    rows.push(`<div class="tip-row"><span class="tip-name"><i class="swatch" style="--c:${paletteColors[seriesIndex]}"></i>${series.name}</span><span class="tip-value">${valueFmt3.format(point.value)} 万元</span></div>`);
+  });
+  document.getElementById('dots3').innerHTML=dots;
+  tip3.innerHTML=`<div class="tooltip-date">${fullFmt3.format(new Date(date+'T00:00:00'))}</div>${rows.join('')}`;
+  tip3.style.display='block';
+  const left=xx+18+tip3.offsetWidth>wrap3.clientWidth?xx-tip3.offsetWidth-14:xx+14;
+  tip3.style.left=Math.max(6,left)+'px'; tip3.style.top='42px';
+}
+function hideHover3(){ const layer=document.getElementById('hoverLayer3'); if(layer) layer.style.display='none'; tip3.style.display='none'; }
+function buildTable3(){
+  const dates=[...new Set(SERIES3.flatMap(series=>series.points.map(point=>point.date)))].sort().reverse();
+  const maps=SERIES3.map(series=>new Map(series.points.map(point=>[point.date,point.value])));
+  document.getElementById('dataTable3').innerHTML=`<thead><tr><th>日期</th>${SERIES3.map(series=>`<th>${series.name}（万元）</th>`).join('')}</tr></thead><tbody>${dates.map(date=>`<tr><td>${date}</td>${maps.map(map=>`<td>${map.has(date)?valueFmt3.format(map.get(date)):'—'}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+renderLegend3(); buildTable3(); render3();
+document.querySelectorAll('[data-days-3]').forEach(button=>button.onclick=()=>{
+  days3=button.dataset.days3;
+  document.querySelectorAll('[data-days-3]').forEach(item=>item.classList.toggle('active',item===button));
+  hideHover3(); render3();
+});
+document.getElementById('tableBtn3').onclick=()=>{
+  const section=document.getElementById('tableSection3'),shown=section.classList.toggle('show');
+  document.getElementById('tableBtn3').textContent=shown?'隐藏数据表':'查看数据表';
+};
+new ResizeObserver(()=>render3()).observe(wrap3);
+new MutationObserver(()=>render3()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+<script>
+(() => {
+const DATA4_NAV=[{"date":"2026-06-09","nav":2.2726,"premium":6.78},{"date":"2026-06-10","nav":2.2454,"premium":5.12},{"date":"2026-06-11","nav":2.2004,"premium":6.27},{"date":"2026-06-12","nav":2.2733,"premium":4.53},{"date":"2026-06-15","nav":2.2866,"premium":8.37},{"date":"2026-06-16","nav":2.3551,"premium":6.67},{"date":"2026-06-17","nav":2.3115,"premium":8.72},{"date":"2026-06-18","nav":2.288,"premium":9.27},{"date":"2026-06-23","nav":2.3424,"premium":3.57},{"date":"2026-06-24","nav":2.266,"premium":7.71},{"date":"2026-06-25","nav":2.2568,"premium":9.5},{"date":"2026-06-26","nav":2.2742,"premium":5.8},{"date":"2026-06-29","nav":2.2477,"premium":7.56},{"date":"2026-06-30","nav":2.2986,"premium":6.7},{"date":"2026-07-01","nav":2.3349,"premium":5.59},{"date":"2026-07-02","nav":2.2979,"premium":4.84},{"date":"2026-07-03","nav":2.2612,"premium":6.88},{"date":"2026-07-06","nav":2.2599,"premium":7.16},{"date":"2026-07-07","nav":2.2889,"premium":5.27},{"date":"2026-07-08","nav":2.2494,"premium":5.73},{"date":"2026-07-09","nav":2.2562,"premium":6.9},{"date":"2026-07-10","nav":2.2913,"premium":5.31},{"date":"2026-07-13","nav":2.2973,"premium":4.27},{"date":"2026-07-14","nav":2.2535,"premium":6.9},{"date":"2026-07-15","nav":2.2786,"premium":6.76},{"date":"2026-07-16","nav":2.2695,"premium":6.1},{"date":"2026-07-17","nav":2.2328,"premium":4.16},{"date":"2026-07-20","nav":2.2002,"premium":5.7},{"date":"2026-07-21","nav":2.2014,"premium":7.63},{"date":"2026-07-22","nav":2.2426,"premium":5.39},{"date":"2026-07-23","nav":2.2311,"premium":5.89},{"date":"2026-07-24","nav":2.1883,"premium":6.5},{"date":"2026-07-27","nav":2.1642,"premium":8.55},{"date":"2026-07-28","nav":2.1564,"premium":5.87},{"date":"2026-07-29","nav":2.1358,"premium":7.22},{"date":"2026-07-30","nav":2.0911,"premium":7.71},{"date":"2026-07-31","nav":2.1609,"premium":8.18},{"date":"2026-08-03","nav":2.1739,"premium":8.03},{"date":"2026-08-04","nav":2.2123,"premium":9.24},{"date":"2026-08-05","nav":2.2865,"premium":9.4},{"date":"2026-08-06","nav":2.2667,"premium":8.82},{"date":"2026-08-07","nav":2.258,"premium":9.68},{"date":"2026-08-10","nav":2.2849,"premium":9.08},{"date":"2026-08-11","nav":2.2767,"premium":7.92},{"date":"2026-08-12","nav":2.2697,"premium":8.77},{"date":"2026-08-13","nav":2.2858,"premium":8.14},{"date":"2026-08-14","nav":2.3121,"premium":8.66},{"date":"2026-08-17","nav":2.3088,"premium":9.29},{"date":"2026-08-18","nav":2.3047,"premium":7.73},{"date":"2026-08-19","nav":2.267,"premium":7.29}];
+const huaanPremiumByDate=new Map(SERIES.find(series=>series.name==='华安').points.map(point=>[point.date,point.value]));
+const DATA4=DATA4_NAV.map(point=>{
+  const premium=huaanPremiumByDate.get(point.date);
+  if(premium===undefined)throw new Error(`缺少华安溢价率数据：${point.date}`);
+  return {...point,premium};
+});
+const svg=document.getElementById('chart4'),wrap=document.getElementById('chartWrap4'),tip=document.getElementById('tooltip4');
+const scatter=document.getElementById('scatter4'),scatterWrap=document.getElementById('scatterWrap4'),scatterTip=document.getElementById('scatterTip4');
+let days='all';
+const dateShort=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit'}),dateFull=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+const palette=()=>['--s1','--s2'].map(name=>getComputedStyle(document.documentElement).getPropertyValue(name).trim());
+const corr=(xs,ys)=>{const n=xs.length;if(n<2)return NaN;const mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;const num=xs.reduce((sum,x,i)=>sum+(x-mx)*(ys[i]-my),0),dx=xs.reduce((sum,x)=>sum+(x-mx)**2,0),dy=ys.reduce((sum,y)=>sum+(y-my)**2,0);return num/Math.sqrt(dx*dy)};
+const corrText=value=>{const a=Math.abs(value);return a<.1?'几乎无相关':a<.3?'弱相关':a<.5?'中等相关':a<.7?'较强相关':'强相关'};
+function filtered(){if(days==='all')return DATA4;const last=new Date(DATA4.at(-1).date+'T00:00:00'),cut=new Date(last);cut.setDate(cut.getDate()-Number(days));return DATA4.filter(point=>new Date(point.date+'T00:00:00')>=cut)}
+function paddedDomain(values,pad=.08){const min=Math.min(...values),max=Math.max(...values),range=max-min||Math.abs(max)||1;return[min-range*pad,max+range*pad]}
+function renderTime(){
+ const data=filtered(),W=svg.clientWidth||700,H=svg.clientHeight||440,mobile=W<620,m={l:mobile?52:62,r:18,t:24,b:42},gap=36,plotH=(H-m.t-m.b-gap)/2,iw=W-m.l-m.r;
+ const navD=paddedDomain(data.map(d=>d.nav)),preD=paddedDomain(data.map(d=>d.premium));
+ const x=i=>m.l+i/(data.length-1||1)*iw,yn=v=>m.t+(navD[1]-v)/(navD[1]-navD[0])*plotH,yp=v=>m.t+plotH+gap+(preD[1]-v)/(preD[1]-preD[0])*plotH,colors=palette();
+ let out='';
+ [[navD,yn,'净值'],[preD,yp,'溢价率']].forEach(([domain,y,label],panel)=>{for(let i=0;i<=3;i++){const v=domain[0]+(domain[1]-domain[0])*i/3,yy=y(v);out+=`<line class="grid" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/><text class="tick" x="${m.l-8}" y="${yy+4}" text-anchor="end">${panel?v.toFixed(1)+'%':v.toFixed(3)}</text>`}out+=`<text class="tick" x="${m.l}" y="${panel?m.t+plotH+gap-9:m.t-9}">${label}</text>`});
+ out+=`<line class="panel-divider" x1="${m.l}" y1="${m.t+plotH+gap/2}" x2="${W-m.r}" y2="${m.t+plotH+gap/2}"/>`;
+ const ticks=mobile?4:6;for(let i=0;i<ticks;i++){const idx=Math.round(i*(data.length-1)/(ticks-1)),xx=x(idx);out+=`<text class="tick" x="${xx}" y="${H-12}" text-anchor="middle">${dateShort.format(new Date(data[idx].date+'T00:00:00'))}</text>`}
+ const path=(key,y)=>data.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(d[key]).toFixed(1)).join(' ');
+ out+=`<path class="line" d="${path('nav',yn)}" stroke="${colors[0]}"/><path class="line" d="${path('premium',yp)}" stroke="${colors[1]}" stroke-dasharray="9 5"/>`;
+ out+=`<g id="hoverLayer4" style="display:none"><line class="crosshair" id="cross4" y1="${m.t}" y2="${m.t+plotH*2+gap}"/><g id="dots4"></g></g><rect id="hit4" x="${m.l}" y="${m.t}" width="${iw}" height="${plotH*2+gap}" fill="transparent"/>`;
+ svg.innerHTML=out;const hit=document.getElementById('hit4');
+ const move=e=>{const r=svg.getBoundingClientRect(),idx=Math.max(0,Math.min(data.length-1,Math.round((e.clientX-r.left-m.l)/iw*(data.length-1))));const d=data[idx],xx=x(idx),layer=document.getElementById('hoverLayer4'),cross=document.getElementById('cross4');layer.style.display='';cross.setAttribute('x1',xx);cross.setAttribute('x2',xx);document.getElementById('dots4').innerHTML=`<circle class="hover-dot" cx="${xx}" cy="${yn(d.nav)}" r="5" fill="${colors[0]}"/><circle class="hover-dot" cx="${xx}" cy="${yp(d.premium)}" r="5" fill="${colors[1]}"/>`;tip.innerHTML=`<div class="tooltip-date">${dateFull.format(new Date(d.date+'T00:00:00'))}</div><div class="tip-row"><span class="tip-name"><i class="swatch" style="--c:${colors[0]}"></i>净值</span><span class="tip-value">${d.nav.toFixed(4)}</span></div><div class="tip-row"><span class="tip-name"><i class="swatch" style="--c:${colors[1]}"></i>溢价率</span><span class="tip-value">${d.premium.toFixed(2)}%</span></div>`;tip.style.display='block';tip.style.left=Math.max(6,xx+tip.offsetWidth+24>wrap.clientWidth?xx-tip.offsetWidth-12:xx+12)+'px';tip.style.top='40px'};
+ hit.addEventListener('pointermove',move);hit.addEventListener('pointerenter',move);hit.addEventListener('pointerdown',move);hit.addEventListener('pointerleave',()=>{document.getElementById('hoverLayer4').style.display='none';tip.style.display='none'});
+}
+function renderScatter(){
+ const data=filtered(),W=scatter.clientWidth||350,H=scatter.clientHeight||360,m={l:52,r:18,t:18,b:48},iw=W-m.l-m.r,ih=H-m.t-m.b,navD=paddedDomain(data.map(d=>d.nav)),preD=paddedDomain(data.map(d=>d.premium)),x=v=>m.l+(v-navD[0])/(navD[1]-navD[0])*iw,y=v=>m.t+(preD[1]-v)/(preD[1]-preD[0])*ih,colors=palette();let out='';
+ for(let i=0;i<=4;i++){const nv=navD[0]+(navD[1]-navD[0])*i/4,pv=preD[0]+(preD[1]-preD[0])*i/4,xx=x(nv),yy=y(pv);out+=`<line class="grid" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/><text class="tick" x="${m.l-7}" y="${yy+4}" text-anchor="end">${pv.toFixed(1)}%</text><text class="tick" x="${xx}" y="${H-20}" text-anchor="middle">${nv.toFixed(3)}</text>`}
+ const mx=data.reduce((s,d)=>s+d.nav,0)/data.length,my=data.reduce((s,d)=>s+d.premium,0)/data.length,slope=data.reduce((s,d)=>s+(d.nav-mx)*(d.premium-my),0)/data.reduce((s,d)=>s+(d.nav-mx)**2,0),intercept=my-slope*mx;
+ out+=`<path class="regression" d="M${x(navD[0])},${y(slope*navD[0]+intercept)} L${x(navD[1])},${y(slope*navD[1]+intercept)}"/>`;
+ data.forEach((d,i)=>out+=`<circle class="scatter-dot" data-i="${i}" cx="${x(d.nav)}" cy="${y(d.premium)}" r="5" fill="${colors[0]}"/>`);out+=`<text class="tick" x="${m.l+iw/2}" y="${H-3}" text-anchor="middle">净值</text>`;scatter.innerHTML=out;
+ scatter.querySelectorAll('.scatter-dot').forEach(dot=>{const show=e=>{const d=data[Number(dot.dataset.i)],r=scatter.getBoundingClientRect();scatterTip.innerHTML=`<div class="tooltip-date">${d.date}</div><div class="tip-row"><span>净值</span><span class="tip-value">${d.nav.toFixed(4)}</span></div><div class="tip-row"><span>溢价率</span><span class="tip-value">${d.premium.toFixed(2)}%</span></div>`;scatterTip.style.display='block';scatterTip.style.left=Math.max(4,Math.min(e.clientX-r.left+10,scatterWrap.clientWidth-scatterTip.offsetWidth-4))+'px';scatterTip.style.top=Math.max(4,e.clientY-r.top-scatterTip.offsetHeight-8)+'px'};dot.addEventListener('pointerenter',show);dot.addEventListener('pointermove',show);dot.addEventListener('pointerleave',()=>scatterTip.style.display='none')});
+ const level=corr(data.map(d=>d.nav),data.map(d=>d.premium)),navChanges=data.slice(1).map((d,i)=>(d.nav-data[i].nav)/data[i].nav*100),premiumChanges=data.slice(1).map((d,i)=>d.premium-data[i].premium),change=corr(navChanges,premiumChanges);
+ document.getElementById('levelCorr4').textContent=level.toFixed(2);document.getElementById('levelNote4').textContent=corrText(level);document.getElementById('changeCorr4').textContent=change.toFixed(2);document.getElementById('changeNote4').textContent='净值涨跌幅 vs 溢价率变动：'+corrText(change);
+}
+function buildTable(){document.getElementById('dataTable4').innerHTML=`<thead><tr><th>日期</th><th>净值</th><th>溢价率</th></tr></thead><tbody>${DATA4.slice().reverse().map(d=>`<tr><td>${d.date}</td><td>${d.nav.toFixed(4)}</td><td>${d.premium.toFixed(2)}%</td></tr>`).join('')}</tbody>`}
+function renderAll(){renderTime();renderScatter()}
+buildTable();renderAll();
+document.querySelectorAll('[data-days-4]').forEach(button=>button.onclick=()=>{days=button.dataset.days4;document.querySelectorAll('[data-days-4]').forEach(item=>item.classList.toggle('active',item===button));renderAll()});
+document.getElementById('tableBtn4').onclick=()=>{const section=document.getElementById('tableSection4'),shown=section.classList.toggle('show');document.getElementById('tableBtn4').textContent=shown?'隐藏数据表':'查看数据表'};
+new ResizeObserver(renderAll).observe(document.getElementById('huaanCorrelationCard'));
+new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+<script>
+(() => {
+const DATA5=[{"date":"2026-06-09","nav":2.0029,"premium":9.84},{"date":"2026-06-10","nav":1.979,"premium":8.29},{"date":"2026-06-11","nav":1.9394,"premium":9.83},{"date":"2026-06-12","nav":2.0035,"premium":7.91},{"date":"2026-06-15","nav":2.0152,"premium":12.05},{"date":"2026-06-16","nav":2.0754,"premium":9.86},{"date":"2026-06-17","nav":2.037,"premium":11.88},{"date":"2026-06-18","nav":2.0164,"premium":12.38},{"date":"2026-06-23","nav":2.0635,"premium":5.35},{"date":"2026-06-24","nav":1.9962,"premium":9.56},{"date":"2026-06-25","nav":1.9881,"premium":11.06},{"date":"2026-06-26","nav":2.0034,"premium":7.72},{"date":"2026-06-29","nav":1.9801,"premium":9.99},{"date":"2026-06-30","nav":2.0249,"premium":8.84},{"date":"2026-07-01","nav":2.0568,"premium":7.39},{"date":"2026-07-02","nav":2.0243,"premium":6.6},{"date":"2026-07-03","nav":1.992,"premium":8.79},{"date":"2026-07-06","nav":1.9908,"premium":9.05},{"date":"2026-07-07","nav":2.0164,"premium":7.57},{"date":"2026-07-08","nav":1.9803,"premium":8.11},{"date":"2026-07-09","nav":1.9863,"premium":9.05},{"date":"2026-07-10","nav":2.0172,"premium":7.77},{"date":"2026-07-13","nav":2.0224,"premium":7.2},{"date":"2026-07-14","nav":1.9839,"premium":9.38},{"date":"2026-07-15","nav":2.0061,"premium":9.07},{"date":"2026-07-16","nav":1.9981,"premium":8.45},{"date":"2026-07-17","nav":1.9659,"premium":7.18},{"date":"2026-07-20","nav":1.9371,"premium":8.2},{"date":"2026-07-21","nav":1.9381,"premium":9.9},{"date":"2026-07-22","nav":1.9744,"premium":7.88},{"date":"2026-07-23","nav":1.9643,"premium":8.49},{"date":"2026-07-24","nav":1.9267,"premium":9.2},{"date":"2026-07-27","nav":1.9055,"premium":11.15},{"date":"2026-07-28","nav":1.8986,"premium":8.92},{"date":"2026-07-29","nav":1.8805,"premium":10.29},{"date":"2026-07-30","nav":1.841,"premium":10.86},{"date":"2026-07-31","nav":1.9024,"premium":11.02},{"date":"2026-08-03","nav":1.9139,"premium":11.13},{"date":"2026-08-04","nav":1.9477,"premium":12.54},{"date":"2026-08-05","nav":2.0129,"premium":12.62},{"date":"2026-08-06","nav":1.9959,"premium":12.43},{"date":"2026-08-07","nav":1.9882,"premium":13.97},{"date":"2026-08-10","nav":2.012,"premium":12.38},{"date":"2026-08-11","nav":2.0047,"premium":10.49},{"date":"2026-08-12","nav":1.9985,"premium":11.38},{"date":"2026-08-13","nav":2.0127,"premium":10.6},{"date":"2026-08-14","nav":2.0359,"premium":11.2},{"date":"2026-08-17","nav":2.033,"premium":11.85},{"date":"2026-08-18","nav":2.0294,"premium":10.33},{"date":"2026-08-19","nav":1.9961,"premium":10.21}];
+const timeSvg=document.getElementById('chart5'),timeWrap=document.getElementById('chartWrap5'),timeTip=document.getElementById('tooltip5');
+let days='all';
+const shortDate=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit'}),fullDate=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+const colors=()=>['--s1','--s2'].map(name=>getComputedStyle(document.documentElement).getPropertyValue(name).trim());
+const corr=(xs,ys)=>{const n=xs.length,mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;return xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0)/Math.sqrt(xs.reduce((s,x)=>s+(x-mx)**2,0)*ys.reduce((s,y)=>s+(y-my)**2,0))};
+const describe=r=>Math.abs(r)<.1?'几乎无线性相关':Math.abs(r)<.3?'弱'+(r<0?'负':'正')+'相关':Math.abs(r)<.5?'中等'+(r<0?'负':'正')+'相关':Math.abs(r)<.7?'中等偏强'+(r<0?'负':'正')+'相关':'强'+(r<0?'负':'正')+'相关';
+const domain=(values,p=.09)=>{const lo=Math.min(...values),hi=Math.max(...values),r=hi-lo||1;return[lo-r*p,hi+r*p]};
+function filtered(){if(days==='all')return DATA5;const last=new Date(DATA5.at(-1).date+'T00:00:00'),cut=new Date(last);cut.setDate(cut.getDate()-Number(days));return DATA5.filter(d=>new Date(d.date+'T00:00:00')>=cut)}
+function changes(data){return data.slice(1).map((d,i)=>({date:d.date,x:(d.nav/data[i].nav-1)*100,y:d.premium-data[i].premium}))}
+function renderTime(){
+ const data=filtered(),W=timeSvg.clientWidth||700,H=timeSvg.clientHeight||440,m={l:58,r:18,t:24,b:42},gap=36,ph=(H-m.t-m.b-gap)/2,iw=W-m.l-m.r,nd=domain(data.map(d=>d.nav)),pd=domain(data.map(d=>d.premium)),x=i=>m.l+i/(data.length-1||1)*iw,yn=v=>m.t+(nd[1]-v)/(nd[1]-nd[0])*ph,yp=v=>m.t+ph+gap+(pd[1]-v)/(pd[1]-pd[0])*ph,c=colors();let out='';
+ [[nd,yn,false],[pd,yp,true]].forEach(([d,y,pct],panel)=>{for(let i=0;i<=3;i++){const v=d[0]+(d[1]-d[0])*i/3,yy=y(v);out+=`<line class="grid" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/><text class="tick" x="${m.l-7}" y="${yy+4}" text-anchor="end">${pct?v.toFixed(1)+'%':v.toFixed(3)}</text>`}out+=`<text class="tick" x="${m.l}" y="${panel?m.t+ph+gap-9:m.t-9}">${panel?'溢价率':'净值'}</text>`});
+ const ticks=W<620?4:6;for(let i=0;i<ticks;i++){const idx=Math.round(i*(data.length-1)/(ticks-1));out+=`<text class="tick" x="${x(idx)}" y="${H-12}" text-anchor="middle">${shortDate.format(new Date(data[idx].date+'T00:00:00'))}</text>`}
+ const path=(key,y)=>data.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(d[key]).toFixed(1)).join(' ');out+=`<path class="line" d="${path('nav',yn)}" stroke="${c[0]}"/><path class="line" d="${path('premium',yp)}" stroke="${c[1]}" stroke-dasharray="9 5"/><g id="hoverLayer5" style="display:none"><line class="crosshair" id="cross5" y1="${m.t}" y2="${m.t+ph*2+gap}"/><g id="dots5"></g></g><rect id="hit5" x="${m.l}" y="${m.t}" width="${iw}" height="${ph*2+gap}" fill="transparent"/>`;timeSvg.innerHTML=out;
+ const hit=document.getElementById('hit5'),move=e=>{const r=timeSvg.getBoundingClientRect(),i=Math.max(0,Math.min(data.length-1,Math.round((e.clientX-r.left-m.l)/iw*(data.length-1)))),d=data[i],xx=x(i),layer=document.getElementById('hoverLayer5'),cross=document.getElementById('cross5');layer.style.display='';cross.setAttribute('x1',xx);cross.setAttribute('x2',xx);document.getElementById('dots5').innerHTML=`<circle class="hover-dot" cx="${xx}" cy="${yn(d.nav)}" r="5" fill="${c[0]}"/><circle class="hover-dot" cx="${xx}" cy="${yp(d.premium)}" r="5" fill="${c[1]}"/>`;timeTip.innerHTML=`<div class="tooltip-date">${fullDate.format(new Date(d.date+'T00:00:00'))}</div><div class="tip-row"><span>净值</span><span class="tip-value">${d.nav.toFixed(4)}</span></div><div class="tip-row"><span>溢价率</span><span class="tip-value">${d.premium.toFixed(2)}%</span></div>`;timeTip.style.display='block';timeTip.style.left=Math.max(5,xx+timeTip.offsetWidth+25>timeWrap.clientWidth?xx-timeTip.offsetWidth-10:xx+10)+'px';timeTip.style.top='40px'};
+ hit.addEventListener('pointermove',move);hit.addEventListener('pointerenter',move);hit.addEventListener('pointerdown',move);hit.addEventListener('pointerleave',()=>{document.getElementById('hoverLayer5').style.display='none';timeTip.style.display='none'});
+}
+function renderScatter(svgId,wrapId,tipId,data,xKey,yKey,xLabel,yLabel,xDigits,yDigits){
+ const svg=document.getElementById(svgId),wrap=document.getElementById(wrapId),tip=document.getElementById(tipId),W=svg.clientWidth||340,H=svg.clientHeight||250,m={l:48,r:14,t:12,b:40},iw=W-m.l-m.r,ih=H-m.t-m.b,xd=domain(data.map(d=>d[xKey])),yd=domain(data.map(d=>d[yKey])),x=v=>m.l+(v-xd[0])/(xd[1]-xd[0])*iw,y=v=>m.t+(yd[1]-v)/(yd[1]-yd[0])*ih,c=colors();let out='';
+ for(let i=0;i<=3;i++){const xv=xd[0]+(xd[1]-xd[0])*i/3,yv=yd[0]+(yd[1]-yd[0])*i/3,xx=x(xv),yy=y(yv);out+=`<line class="grid" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/><text class="tick" x="${m.l-6}" y="${yy+4}" text-anchor="end">${yv.toFixed(yDigits)}</text><text class="tick" x="${xx}" y="${H-17}" text-anchor="middle">${xv.toFixed(xDigits)}</text>`}
+ const mx=data.reduce((s,d)=>s+d[xKey],0)/data.length,my=data.reduce((s,d)=>s+d[yKey],0)/data.length,slope=data.reduce((s,d)=>s+(d[xKey]-mx)*(d[yKey]-my),0)/data.reduce((s,d)=>s+(d[xKey]-mx)**2,0),intercept=my-slope*mx;out+=`<path class="regression" d="M${x(xd[0])},${y(slope*xd[0]+intercept)} L${x(xd[1])},${y(slope*xd[1]+intercept)}"/>`;data.forEach((d,i)=>out+=`<circle class="scatter-dot" data-i="${i}" cx="${x(d[xKey])}" cy="${y(d[yKey])}" r="4.5" fill="${c[0]}"/>`);out+=`<text class="tick" x="${m.l+iw/2}" y="${H-2}" text-anchor="middle">${xLabel}</text>`;svg.innerHTML=out;
+ svg.querySelectorAll('.scatter-dot').forEach(dot=>{const show=e=>{const d=data[Number(dot.dataset.i)],r=svg.getBoundingClientRect();tip.innerHTML=`<div class="tooltip-date">${d.date}</div><div class="tip-row"><span>${xLabel}</span><span class="tip-value">${d[xKey].toFixed(xDigits+1)}</span></div><div class="tip-row"><span>${yLabel}</span><span class="tip-value">${d[yKey].toFixed(yDigits+1)}</span></div>`;tip.style.display='block';tip.style.left=Math.max(3,Math.min(e.clientX-r.left+8,wrap.clientWidth-tip.offsetWidth-3))+'px';tip.style.top=Math.max(3,e.clientY-r.top-tip.offsetHeight-7)+'px'};dot.addEventListener('pointerenter',show);dot.addEventListener('pointermove',show);dot.addEventListener('pointerleave',()=>tip.style.display='none')});
+}
+function renderAll(){const data=filtered(),chg=changes(data),level=corr(data.map(d=>d.nav),data.map(d=>d.premium)),change=corr(chg.map(d=>d.x),chg.map(d=>d.y));renderTime();renderScatter('scatter5a','scatterWrap5a','scatterTip5a',data,'nav','premium','净值','溢价率',3,1);renderScatter('scatter5b','scatterWrap5b','scatterTip5b',chg,'x','y','净值涨跌幅%','溢价率变动百分点',1,1);document.getElementById('levelCorr5').textContent=level.toFixed(2);document.getElementById('levelNote5').textContent=describe(level);document.getElementById('changeCorr5').textContent=change.toFixed(2);document.getElementById('changeNote5').textContent=describe(change);document.getElementById('insight5').innerHTML=`<strong>结论：</strong>净值与溢价率的水平值为${describe(level)}（r=${level.toFixed(2)}），但日变化为${describe(change)}（r=${change.toFixed(2)}）。这意味着样本期内“净值高低”不太能解释“溢价率高低”，但净值上涨的交易日往往伴随溢价率回落，反之亦然。`}
+function buildTable(){document.getElementById('dataTable5').innerHTML=`<thead><tr><th>日期</th><th>净值</th><th>溢价率</th></tr></thead><tbody>${DATA5.slice().reverse().map(d=>`<tr><td>${d.date}</td><td>${d.nav.toFixed(4)}</td><td>${d.premium.toFixed(2)}%</td></tr>`).join('')}</tbody>`}
+buildTable();renderAll();document.querySelectorAll('[data-days-5]').forEach(button=>button.onclick=()=>{days=button.dataset.days5;document.querySelectorAll('[data-days-5]').forEach(item=>item.classList.toggle('active',item===button));renderAll()});document.getElementById('tableBtn5').onclick=()=>{const section=document.getElementById('tableSection5'),shown=section.classList.toggle('show');document.getElementById('tableBtn5').textContent=shown?'隐藏数据表':'查看数据表'};new ResizeObserver(renderAll).observe(document.getElementById('guotaiCorrelationCard'));new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+</body>
+</html>

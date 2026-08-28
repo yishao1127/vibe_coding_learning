@@ -1,0 +1,5 @@
+multi_market_analysis/output/*.html
+multi_market_analysis/output/*.csv
+etf_premium_analysis/output/*.html
+__pycache__/
+*.py[cod]
